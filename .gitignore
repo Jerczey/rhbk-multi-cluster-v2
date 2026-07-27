@@ -1,0 +1,18 @@
+# Secrets and local runtime data
+secrets/
+!secrets/*.example
+*.env
+*.pem
+*.key
+*.crt
+
+# Postgres data directories (container-owned)
+postgres/primary/data/
+postgres/standby/data/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/
