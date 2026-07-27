@@ -1,39 +1,61 @@
-# Windows Site B setup checklist (192.168.0.102)
+# Windows Site B — runbook and status
 
-## Prerequisites
+**Host:** Windows 11 at `192.168.0.102`  
+**Role:** Keycloak `cluster-b` + Podman Postgres **sync standby**  
+**Status (2026-07-27):** Site B Keycloak **UP**; standby **streaming / sync** to Linux primary `192.168.0.114`.
+
+For the full dual-site story, see the root [README.md](../README.md).
+
+---
+
+## Completed cutover (summary)
+
+1. Podman + CRC installed; repo cloned from GitHub.
+2. Postgres standby created with `postgres/standby/start-standby.ps1` (named volume `pg-standby-site-b-data`).
+3. Linux ran `scripts/enable-sync-replication.sh` → `sync_state=sync`.
+4. Keycloak Operator 26.7 + CR deployed via `scripts/deploy-site-b.sh` (`stateless`, `cluster-b`, JDBC → `192.168.0.114:5432`).
+5. Linux HAProxy retargeted with `scripts/apply-haproxy-site-b.sh` (`site_b` → `192.168.0.102:443`).
+
+---
+
+## Prerequisites (if rebuilding)
+
 1. Install Podman Desktop (or Podman) and confirm: `podman run hello-world`
-2. Install CRC for Windows, start it, `crc oc-env` then `oc login -u kubeadmin ...`
-3. Allow inbound TCP 5432 from 192.168.0.114 (Windows Defender Firewall) for later promote/testing
-4. Copy this repo folder to Windows (USB, scp, or shared folder), especially:
-   - `postgres/standby/`
-   - `manifests/`
-   - `scripts/deploy-site-b.sh`
-   - `secrets/` (tls + postgres.env)
+2. Install CRC for Windows, start it, `crc oc-env`, then `oc login -u kubeadmin ...`
+3. Allow inbound TCP **5432** from `192.168.0.114` (Windows Defender Firewall) for promote/testing
+4. Clone or pull: https://github.com/Jerczey/rhbk-multi-cluster-v2  
+   Copy `secrets/postgres.env.example` → `secrets/postgres.env` (and TLS if needed)
+
+Optional: LAN file share from Linux `http://192.168.0.114:8765/` when the helper is running.
+
+---
 
 ## Postgres standby
+
 From `postgres/standby` in PowerShell:
 
 ```powershell
 .\start-standby.ps1
 ```
 
-Uses Podman named volume `pg-standby-site-b-data` (Windows bind mounts break postgres UID ownership).
+Uses Podman named volume `pg-standby-site-b-data` (Windows bind mounts break postgres UID ownership). Helpers: `configure-standby.sh`.
 
-Then on Linux primary (or remotely as DB superuser):
+Then on **Linux** primary:
 
 ```bash
 ./scripts/enable-sync-replication.sh
-# or: ALTER SYSTEM SET synchronous_standby_names = 'FIRST 1 (site_b_standby)'; SELECT pg_reload_conf();
 ```
 
-Verify on Linux / via psql to primary:
+Verify on Linux:
 
 ```bash
 podman exec pg-primary-site-a psql -U keycloak -d keycloak \
   -c "SELECT application_name, client_addr, state, sync_state FROM pg_stat_replication;"
 ```
 
-Expect `site_b_standby | 192.168.0.102 | streaming | sync`.
+Expect: `site_b_standby | 192.168.0.102 | streaming | sync`.
+
+---
 
 ## Prove CRC → Linux Postgres
 
@@ -41,6 +63,8 @@ Expect `site_b_standby | 192.168.0.102 | streaming | sync`.
 oc run pgcheck --rm -i --restart=Never --image=docker.io/library/postgres:17-alpine -- \
   env PGPASSWORD='KeycloakPoC2026!' psql -h 192.168.0.114 -U keycloak -d keycloak -c 'SELECT 1'
 ```
+
+---
 
 ## Deploy Keycloak Site B
 
@@ -50,11 +74,28 @@ export APPS_DOMAIN=$(oc get ingresses.config.openshift.io cluster -o jsonpath='{
 ./scripts/deploy-site-b.sh
 ```
 
+Confirm:
+
+```bash
+curl -sk https://keycloak-b.apps-crc.testing/lb-check   # on Windows host
+# From Linux LAN:
+curl -sk --resolve keycloak-b.apps-crc.testing:443:192.168.0.102 \
+  https://keycloak-b.apps-crc.testing/lb-check
+```
+
+---
+
 ## Hosts file (clients)
-- `keycloak-a.apps-crc.testing` → Linux CRC router / host that serves Site A
-- `keycloak-b.apps-crc.testing` → Windows CRC (`crc ip` is often `127.0.0.1` on the Windows host itself; LAN clients use `192.168.0.102`)
+
+| Name | Points to |
+|------|-----------|
+| `keycloak-a.apps-crc.testing` | Linux CRC / Site A path |
+| `keycloak-b.apps-crc.testing` | Windows CRC — LAN clients use `192.168.0.102` (`crc ip` is often `127.0.0.1` **on** the Windows host itself) |
+
+---
 
 ## Retarget Linux HAProxy
+
 On Linux (`192.168.0.114`), after Windows Site B `/lb-check` is UP:
 
 ```bash
@@ -62,7 +103,7 @@ On Linux (`192.168.0.114`), after Windows Site B `/lb-check` is UP:
 curl -sk https://127.0.0.1:8443/lb-check
 ```
 
-`lb/haproxy.cfg` should have:
+`lb/haproxy.cfg` should include:
 
 ```
 server site_b 192.168.0.102:443 ... sni str(keycloak-b.apps-crc.testing) ...
