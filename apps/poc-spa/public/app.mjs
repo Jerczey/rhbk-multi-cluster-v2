@@ -3,7 +3,8 @@ import Keycloak from "keycloak-js";
 const AUTH_URL = "https://auth.lan.local:8443";
 const REALM = "poc-realm";
 const CLIENT_ID = "poc-spa";
-const LB_CHECK = `${AUTH_URL}/lb-check`;
+// Same-origin proxy avoids browser TLS/CORS failures against the lab cert
+const LB_CHECK = "/api/lb-check";
 
 const els = {
   session: document.getElementById("session"),
@@ -130,15 +131,16 @@ els.checkHealth.addEventListener("click", async () => {
     const body = (await res.text()).trim();
     if (res.ok && body === "UP") {
       setChip(els.healthChip, "ok", "Auth LB UP");
-      els.recoveryHint.textContent = "HAProxy /lb-check returned UP.";
+      els.recoveryHint.textContent = "HAProxy /lb-check returned UP (via SPA proxy).";
     } else {
       setChip(els.healthChip, "err", `Unexpected: ${res.status} ${body}`);
-      els.recoveryHint.textContent = "Auth health check did not return UP.";
+      els.recoveryHint.textContent =
+        "Auth health check failed. On Linux: curl -sk https://auth.lan.local:8443/lb-check";
     }
   } catch (err) {
     setChip(els.healthChip, "err", "Unreachable");
     els.recoveryHint.textContent =
-      "Could not reach auth.lan.local:8443. Check hosts file and HAProxy.";
+      "Could not reach the SPA health proxy. Is npm start still running?";
     console.error(err);
   }
 });
@@ -162,10 +164,10 @@ try {
   } else {
     showLoggedOut();
   }
-} catch (err) {
+  } catch (err) {
   showLoggedOut();
   setChip(els.healthChip, "err", "Init failed");
   els.recoveryHint.textContent =
-    "Keycloak init failed. Confirm auth.lan.local resolves to 192.168.0.114 and the SPA client exists.";
+    "Keycloak init failed. Open https://auth.lan.local:8443 once and accept the self-signed certificate, then reload this page.";
   console.error(err);
 }

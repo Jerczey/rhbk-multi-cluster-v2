@@ -28,14 +28,14 @@
       "realmRoles": ["user"]
     },
     {
-      "username": "admin",
+      "username": "bob",
       "enabled": true,
-      "email": "admin@example.com",
-      "firstName": "Admin",
-      "lastName": "Test",
+      "email": "bob@example.com",
+      "firstName": "Bob",
+      "lastName": "Builder",
       "emailVerified": true,
-      "credentials": [{ "type": "password", "value": "admin", "temporary": false }],
-      "realmRoles": ["user", "admin"]
+      "credentials": [{ "type": "password", "value": "bob", "temporary": false }],
+      "realmRoles": ["user"]
     }
   ]
 }
