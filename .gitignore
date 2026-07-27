@@ -1,5 +1,5 @@
 # Secrets and local runtime data
-secrets/
+secrets/*
 !secrets/*.example
 *.env
 *.pem
