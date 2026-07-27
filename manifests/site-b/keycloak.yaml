@@ -1,0 +1,53 @@
+apiVersion: k8s.keycloak.org/v2alpha1
+kind: Keycloak
+metadata:
+  name: keycloak-b
+  namespace: rhbk-mc
+  labels:
+    app: keycloak
+    site: site-b
+spec:
+  instances: 1
+  image: quay.io/keycloak/keycloak:26.7.0
+  startOptimized: false
+  hostname:
+    hostname: keycloak-b.apps-crc.testing
+    strict: false
+  http:
+    tlsSecret: keycloak-tls-secret
+  db:
+    vendor: postgres
+    url: jdbc:postgresql://192.168.0.114:5432/keycloak
+    poolMinSize: 5
+    poolInitialSize: 5
+    poolMaxSize: 15
+    usernameSecret:
+      name: keycloak-db-secret
+      key: username
+    passwordSecret:
+      name: keycloak-db-secret
+      key: password
+  features:
+    enabled:
+      - stateless
+  additionalOptions:
+    - name: spi-cache-embedded--default--cluster-name
+      value: cluster-b
+    - name: log-console-output
+      value: json
+    - name: metrics-enabled
+      value: "true"
+    - name: db-tls-mode
+      value: disabled
+  ingress:
+    enabled: true
+    annotations:
+      haproxy.router.openshift.io/balance: roundrobin
+      haproxy.router.openshift.io/disable_cookies: "true"
+  resources:
+    requests:
+      cpu: "500m"
+      memory: "768Mi"
+    limits:
+      cpu: "2"
+      memory: "1536Mi"
