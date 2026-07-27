@@ -2,9 +2,33 @@
 
 **Host:** Windows 11 at `192.168.0.102`  
 **Role:** Keycloak `cluster-b` + Podman Postgres **sync standby**  
-**Status (2026-07-27):** Site B Keycloak **UP**; standby **streaming / sync** to Linux primary `192.168.0.114`.
+**Status (2026-07-27):** Site B Keycloak was **UP** on `keycloak-b.apps-crc.testing`.  
+**Required next:** apply shared hostname `https://auth.lan.local:8443` (see below) so the PoC SPA can use one OIDC issuer.
 
 For the full dual-site story, see the root [README.md](../README.md).
+
+---
+
+## Shared hostname (auth.lan.local) — do this on Windows
+
+Linux Site A already uses public URL `https://auth.lan.local:8443`. Windows must match:
+
+```bash
+git pull
+oc apply -f manifests/site-b/keycloak.yaml
+oc -n rhbk-mc wait --for=condition=Ready keycloaks.k8s.keycloak.org/keycloak-b --timeout=300s
+oc -n rhbk-mc get route   # expect host auth.lan.local
+```
+
+Add hosts on Windows (and clients):
+
+```
+192.168.0.114  auth.lan.local
+```
+
+Then on Linux: `./scripts/apply-haproxy-site-b.sh`
+
+SPA: see [`apps/poc-spa/README.md`](../apps/poc-spa/README.md).
 
 ---
 

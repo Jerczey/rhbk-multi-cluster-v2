@@ -10,6 +10,9 @@ secrets/*
 postgres/primary/data/
 postgres/standby/data/
 
+# Node
+node_modules/
+
 # OS / editor
 .DS_Store
 Thumbs.db

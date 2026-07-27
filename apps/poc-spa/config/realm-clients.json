@@ -1,0 +1,41 @@
+{
+  "client": {
+    "clientId": "poc-spa",
+    "name": "Multi-cluster PoC SPA",
+    "enabled": true,
+    "publicClient": true,
+    "directAccessGrantsEnabled": true,
+    "standardFlowEnabled": true,
+    "redirectUris": ["http://localhost:8080/*"],
+    "webOrigins": ["http://localhost:8080"],
+    "attributes": {
+      "pkce.code.challenge.method": "S256"
+    }
+  },
+  "roles": [
+    { "name": "user", "description": "User privileges" },
+    { "name": "admin", "description": "Administrator privileges" }
+  ],
+  "users": [
+    {
+      "username": "alice",
+      "enabled": true,
+      "email": "alice@example.com",
+      "firstName": "Alice",
+      "lastName": "Liddel",
+      "emailVerified": true,
+      "credentials": [{ "type": "password", "value": "alice", "temporary": false }],
+      "realmRoles": ["user"]
+    },
+    {
+      "username": "admin",
+      "enabled": true,
+      "email": "admin@example.com",
+      "firstName": "Admin",
+      "lastName": "Test",
+      "emailVerified": true,
+      "credentials": [{ "type": "password", "value": "admin", "temporary": false }],
+      "realmRoles": ["user", "admin"]
+    }
+  ]
+}

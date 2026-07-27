@@ -1,0 +1,14 @@
+{
+  "keycloak": {
+    "url": "https://auth.lan.local:8443",
+    "realm": "poc-realm",
+    "clientId": "poc-spa"
+  },
+  "adminClient": {
+    "baseUrl": "https://auth.lan.local:8443",
+    "realmName": "master",
+    "username": "temp-admin",
+    "password": ""
+  },
+  "lbCheckUrl": "https://auth.lan.local:8443/lb-check"
+}

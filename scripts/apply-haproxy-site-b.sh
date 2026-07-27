@@ -1,10 +1,9 @@
-#!/usr/bin/env bash
-# Run on Linux primary host (192.168.0.114) after Windows Site B is up.
-# Retargets HAProxy site_b to Windows CRC and recreates kc-haproxy-lb.
+# Run on Linux primary host after Windows Site B applies auth.lan.local hostname.
+# Recreates kc-haproxy-lb with Site B backend.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 SITE_B_HOST="${SITE_B_HOST:-192.168.0.102}"
-SITE_B_SNI="${SITE_B_SNI:-keycloak-b.apps-crc.testing}"
+SITE_B_SNI="${SITE_B_SNI:-auth.lan.local}"
 CFG="${ROOT}/lb/haproxy.cfg"
 
 cp -a "${CFG}" "${CFG}.bak.$(date +%Y%m%d%H%M%S)"
@@ -42,4 +41,5 @@ print(cfg.read_text())
 PY
 
 bash "${ROOT}/lb/start-haproxy.sh"
-echo "Verify: curl -sk https://127.0.0.1:8443/lb-check && curl -sk https://${SITE_B_HOST}:443/lb-check -H 'Host: ${SITE_B_SNI}'"
+echo "Verify: curl -sk https://auth.lan.local:8443/lb-check"
+echo "Issuer: curl -sk https://auth.lan.local:8443/realms/poc-realm/.well-known/openid-configuration | jq .issuer"

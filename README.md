@@ -14,11 +14,13 @@ Official guides used (see `docs/`):
 
 | Check | Result |
 |--------|--------|
-| Site A `/lb-check` | **UP** — https://keycloak-a.apps-crc.testing |
-| Site B `/lb-check` | **UP** — https://keycloak-b.apps-crc.testing (Windows `192.168.0.102`) |
-| HAProxy LB | **UP** — https://192.168.0.114:8443 (round-robin Site A + Site B) |
+| Shared auth URL | **https://auth.lan.local:8443** (hosts → `192.168.0.114`) |
+| OIDC issuer | `https://auth.lan.local:8443/realms/poc-realm` |
+| HAProxy `/lb-check` | **UP** — round-robin Site A (+ Site B after Windows applies shared hostname) |
+| Site A Keycloak | **Ready** — route host `auth.lan.local` on Linux CRC |
+| Site B Keycloak | Apply [`manifests/site-b/keycloak.yaml`](manifests/site-b/keycloak.yaml) on Windows so route/SNI is `auth.lan.local` |
 | Postgres sync replication | **`site_b_standby` streaming / `sync`** from `192.168.0.102` |
-| Keycloak JDBC to primary | Linux CRC + Windows CRC both connected |
+| PoC SPA | [`apps/poc-spa`](apps/poc-spa) — Red Hat–branded js/spa |
 | GitHub | https://github.com/Jerczey/rhbk-multi-cluster-v2 (private) |
 
 **Hosts**
@@ -33,13 +35,35 @@ Official guides used (see `docs/`):
 
 ```mermaid
 flowchart LR
-  Client[LAN client] --> LB[HAProxy :8443 on Linux]
+  SPA[PoC SPA localhost:8080] -->|"OIDC auth.lan.local:8443"| LB[HAProxy :8443 on Linux]
   LB --> KCA[Keycloak cluster-a Linux CRC]
   LB --> KCB[Keycloak cluster-b Windows CRC]
   KCA --> PGA[Postgres PRIMARY Linux :5432]
   KCB --> PGA
   PGA -->|sync streaming| PGB[Postgres STANDBY Windows]
 ```
+
+---
+
+## PoC SPA (multi-site recovery)
+
+Enriched app based on RHBK `js/spa` quickstart. Details: [`apps/poc-spa/README.md`](apps/poc-spa/README.md).
+
+```bash
+# hosts: 192.168.0.114 auth.lan.local   (see docs/HOSTS.md)
+cd apps/poc-spa && npm install && npm run setup-realm && npm start
+# open http://localhost:8080 — users alice/alice or admin/admin
+```
+
+**Windows follow-up (required for dual-site LB):**
+
+```bash
+git pull
+oc apply -f manifests/site-b/keycloak.yaml
+# wait Ready; confirm route host is auth.lan.local
+```
+
+On Linux after Windows is updated: `./scripts/apply-haproxy-site-b.sh`
 
 ---
 
