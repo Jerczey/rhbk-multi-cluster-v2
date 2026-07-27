@@ -17,20 +17,23 @@ From `postgres/standby` in PowerShell:
 .\start-standby.ps1
 ```
 
-Then on Linux primary:
+Uses Podman named volume `pg-standby-site-b-data` (Windows bind mounts break postgres UID ownership).
+
+Then on Linux primary (or remotely as DB superuser):
 
 ```bash
 ./scripts/enable-sync-replication.sh
+# or: ALTER SYSTEM SET synchronous_standby_names = 'FIRST 1 (site_b_standby)'; SELECT pg_reload_conf();
 ```
 
-Verify on Linux:
+Verify on Linux / via psql to primary:
 
 ```bash
 podman exec pg-primary-site-a psql -U keycloak -d keycloak \
   -c "SELECT application_name, client_addr, state, sync_state FROM pg_stat_replication;"
 ```
 
-Expect `sync_state = sync` for `site_b_standby`.
+Expect `site_b_standby | 192.168.0.102 | streaming | sync`.
 
 ## Prove CRC → Linux Postgres
 
@@ -48,4 +51,19 @@ export APPS_DOMAIN=$(oc get ingresses.config.openshift.io cluster -o jsonpath='{
 ```
 
 ## Hosts file (clients)
-Add Windows CRC apps domain / router IP similar to Linux `apps-crc.testing`.
+- `keycloak-a.apps-crc.testing` → Linux CRC router / host that serves Site A
+- `keycloak-b.apps-crc.testing` → Windows CRC (`crc ip` is often `127.0.0.1` on the Windows host itself; LAN clients use `192.168.0.102`)
+
+## Retarget Linux HAProxy
+On Linux (`192.168.0.114`), after Windows Site B `/lb-check` is UP:
+
+```bash
+./scripts/apply-haproxy-site-b.sh
+curl -sk https://127.0.0.1:8443/lb-check
+```
+
+`lb/haproxy.cfg` should have:
+
+```
+server site_b 192.168.0.102:443 ... sni str(keycloak-b.apps-crc.testing) ...
+```

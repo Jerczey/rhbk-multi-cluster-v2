@@ -1,5 +1,6 @@
 # Run in PowerShell on Windows Site B (Podman Desktop)
 # Usage: .\start-standby.ps1
+# Uses a Podman named volume so postgres UID ownership works under WSL.
 
 $ErrorActionPreference = "Stop"
 
@@ -9,42 +10,67 @@ $REPLICATION_USER = "replicator"
 $REPLICATION_PASSWORD = "ReplicatorPoC2026!"
 $POSTGRES_IMAGE = "docker.io/library/postgres:17-alpine"
 $CONTAINER_NAME = "pg-standby-site-b"
-$DATA_DIR = Join-Path $PSScriptRoot "data"
+$VOLUME_NAME = "pg-standby-site-b-data"
 $SLOT_NAME = "site_b_standby"
 $APP_NAME = "site_b_standby"
+$SCRIPT_DIR = $PSScriptRoot
 
-New-Item -ItemType Directory -Force -Path $DATA_DIR | Out-Null
-
-$exists = podman container exists $CONTAINER_NAME 2>$null
+podman container exists $CONTAINER_NAME 2>$null
 if ($LASTEXITCODE -eq 0) {
-  podman stop $CONTAINER_NAME 2>$null
-  podman rm $CONTAINER_NAME 2>$null
+  podman stop $CONTAINER_NAME 2>$null | Out-Null
+  podman rm $CONTAINER_NAME 2>$null | Out-Null
 }
 
-if (Test-Path (Join-Path $DATA_DIR "PG_VERSION")) {
-  Write-Error "Existing data in $DATA_DIR — delete it to re-basebackup: Remove-Item -Recurse -Force $DATA_DIR\*"
+podman volume exists $VOLUME_NAME 2>$null
+if ($LASTEXITCODE -eq 0) {
+  Write-Host "Removing existing volume $VOLUME_NAME for fresh basebackup..."
+  podman volume rm $VOLUME_NAME | Out-Null
 }
+podman volume create $VOLUME_NAME | Out-Null
 
-Write-Host "Taking basebackup from $PRIMARY_HOST..."
+Write-Host "Taking basebackup from ${PRIMARY_HOST}:${PRIMARY_PORT}..."
 podman run --rm `
+  --user postgres `
   -e "PGPASSWORD=$REPLICATION_PASSWORD" `
-  -v "${DATA_DIR}:/var/lib/postgresql/data:Z" `
+  -v "${VOLUME_NAME}:/var/lib/postgresql/data:Z" `
   $POSTGRES_IMAGE `
   pg_basebackup -h $PRIMARY_HOST -p $PRIMARY_PORT `
     -U $REPLICATION_USER -D /var/lib/postgresql/data `
     -Fp -Xs -P -R -S $SLOT_NAME
 
-@"
-primary_conninfo = 'host=$PRIMARY_HOST port=$PRIMARY_PORT user=$REPLICATION_USER password=$REPLICATION_PASSWORD application_name=$APP_NAME'
-primary_slot_name = '$SLOT_NAME'
-"@ | Set-Content -Path (Join-Path $DATA_DIR "postgresql.auto.conf") -Encoding ascii
+if ($LASTEXITCODE -ne 0) {
+  throw "pg_basebackup failed with exit $LASTEXITCODE"
+}
 
-New-Item -ItemType File -Force -Path (Join-Path $DATA_DIR "standby.signal") | Out-Null
+Write-Host "Configuring standby.signal and primary_conninfo..."
+# Convert Windows path to something podman can mount
+$cfgMount = ($SCRIPT_DIR -replace '\\','/')
+podman run --rm `
+  -e "PRIMARY_HOST=$PRIMARY_HOST" `
+  -e "PRIMARY_PORT=$PRIMARY_PORT" `
+  -e "REPLICATION_USER=$REPLICATION_USER" `
+  -e "REPLICATION_PASSWORD=$REPLICATION_PASSWORD" `
+  -e "APP_NAME=$APP_NAME" `
+  -e "SLOT_NAME=$SLOT_NAME" `
+  -v "${VOLUME_NAME}:/var/lib/postgresql/data:Z" `
+  -v "${cfgMount}/configure-standby.sh:/configure-standby.sh:ro,Z" `
+  $POSTGRES_IMAGE `
+  sh /configure-standby.sh
+
+if ($LASTEXITCODE -ne 0) {
+  throw "standby config step failed with exit $LASTEXITCODE"
+}
 
 podman run -d --name $CONTAINER_NAME `
   --restart=unless-stopped `
-  -v "${DATA_DIR}:/var/lib/postgresql/data:Z" `
+  -v "${VOLUME_NAME}:/var/lib/postgresql/data:Z" `
   -p 5432:5432 `
-  $POSTGRES_IMAGE
+  --user postgres `
+  $POSTGRES_IMAGE `
+  postgres -c hot_standby=on
 
-Write-Host "Standby started. On Linux primary run: scripts/enable-sync-replication.sh"
+if ($LASTEXITCODE -ne 0) {
+  throw "failed to start standby container"
+}
+
+Write-Host "Standby started (volume=$VOLUME_NAME). Enable sync on primary, then verify pg_stat_replication."
