@@ -158,7 +158,7 @@ Credentials (gitignored): copy from `secrets/*.env.example` → `secrets/*.env`.
 
 ## Operational notes
 
-- **Do not** put ngrok (or any tunnel) in the Postgres sync path; LAN only for site-to-site. Ngrok remains optional later in front of the LAN HAProxy for external demos.
+- Site-to-site traffic and Postgres sync stay on the **LAN** only (no public tunnels in that path).
 - Enable sync **only after** Windows standby is streaming; otherwise primary commits can block.
 - Failover still needs **manual** promote of the Windows standby and re-pointing Keycloak JDBC (see `scripts/promote-standby.sh`).
 - Existing older RHBK demo in namespace `rhbk` on Linux CRC was left alone; this PoC uses `rhbk-mc`.
