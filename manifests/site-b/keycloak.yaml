@@ -11,7 +11,8 @@ spec:
   image: quay.io/keycloak/keycloak:26.7.0
   startOptimized: false
   hostname:
-    hostname: keycloak-b.apps-crc.testing
+    # Must match Site A — single OIDC issuer for multi-site SPA
+    hostname: https://auth.lan.local:8443
     strict: false
   http:
     tlsSecret: keycloak-tls-secret

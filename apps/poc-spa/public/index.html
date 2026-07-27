@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Red Hat build of Keycloak — multi-cluster PoC</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Red+Hat+Display:wght@400;700&family=Red+Hat+Text:wght@400;700&family=Red+Hat+Mono:wght@400;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/styles.css" />
+    <script type="importmap">
+      {
+        "imports": {
+          "keycloak-js": "/vendor/keycloak.js"
+        }
+      }
+    </script>
+    <link rel="modulepreload" href="/vendor/keycloak.js" />
+  </head>
+  <body>
+    <header class="hero" id="hero">
+      <p class="brand">Red Hat build of Keycloak</p>
+      <h1>Multi-cluster v2 PoC</h1>
+      <p class="lede">
+        Sign in through the shared LAN auth URL and prove sessions survive site failover.
+      </p>
+    </header>
+
+    <main>
+      <section class="session" id="session" hidden>
+        <div class="session-main">
+          <h2 id="greeting">Signed in</h2>
+          <dl class="meta">
+            <div>
+              <dt>Issuer</dt>
+              <dd id="issuer">—</dd>
+            </div>
+            <div>
+              <dt>Roles</dt>
+              <dd id="roles">—</dd>
+            </div>
+            <div>
+              <dt>Access token expires</dt>
+              <dd id="expiry">—</dd>
+            </div>
+          </dl>
+        </div>
+        <p class="chip" id="statusChip" data-state="idle">Session idle</p>
+      </section>
+
+      <section class="actions" id="actions">
+        <button type="button" class="btn btn-primary" id="login" hidden>Log in</button>
+        <button type="button" class="btn" id="logout" hidden>Log out</button>
+        <button type="button" class="btn" id="refreshToken" hidden>Refresh token</button>
+        <button type="button" class="btn" id="showIdToken" hidden>Show ID token</button>
+        <button type="button" class="btn" id="showAccessToken" hidden>Show access token</button>
+        <button type="button" class="btn" id="showMyAccount" hidden>My account</button>
+      </section>
+
+      <section class="recovery" id="recovery">
+        <h2>Recovery drill</h2>
+        <p>
+          Stop Site A or Site B Keycloak, then refresh the token. The issuer must stay
+          <code>https://auth.lan.local:8443/realms/poc-realm</code>.
+        </p>
+        <div class="recovery-actions">
+          <button type="button" class="btn btn-primary" id="checkHealth">Check auth health</button>
+          <span class="chip" id="healthChip" data-state="idle">Not checked</span>
+        </div>
+        <p class="hint" id="recoveryHint"></p>
+      </section>
+
+      <section class="token-panel" id="tokenPanel" hidden>
+        <div class="token-head">
+          <h2 id="tokenTitle">Token</h2>
+          <button type="button" class="btn btn-ghost" id="hideToken">Hide</button>
+        </div>
+        <pre id="output" class="token-out"></pre>
+      </section>
+    </main>
+
+    <footer>
+      <p>
+        Auth:
+        <a href="https://auth.lan.local:8443" id="authLink">https://auth.lan.local:8443</a>
+        · Realm <code>poc-realm</code> · Client <code>poc-spa</code>
+      </p>
+    </footer>
+
+    <script type="module" src="/app.mjs"></script>
+  </body>
+</html>

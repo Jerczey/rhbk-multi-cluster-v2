@@ -11,7 +11,8 @@ spec:
   image: quay.io/keycloak/keycloak:26.7.0
   startOptimized: false
   hostname:
-    hostname: keycloak-a.apps-crc.testing
+    # Shared public issuer behind LAN HAProxy (port included for non-443 LB)
+    hostname: https://auth.lan.local:8443
     strict: false
   http:
     tlsSecret: keycloak-tls-secret

@@ -1,0 +1,14 @@
+{
+  "name": "poc-spa",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "start": "node app.js",
+    "setup-realm": "NODE_TLS_REJECT_UNAUTHORIZED=0 node scripts/setup-realm.js"
+  },
+  "dependencies": {
+    "@keycloak/keycloak-admin-client": "^26.0.5",
+    "express": "^4.21.2",
+    "keycloak-js": "^26.0.5"
+  }
+}
