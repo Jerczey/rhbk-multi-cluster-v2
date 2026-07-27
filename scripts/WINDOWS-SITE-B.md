@@ -2,16 +2,15 @@
 
 **Host:** Windows 11 at `192.168.0.102`  
 **Role:** Keycloak `cluster-b` + Podman Postgres **sync standby**  
-**Status (2026-07-27):** Site B Keycloak was **UP** on `keycloak-b.apps-crc.testing`.  
-**Required next:** apply shared hostname `https://auth.lan.local:8443` (see below) so the PoC SPA can use one OIDC issuer.
+**Status (2026-07-27):** Site B is live with shared hostname **`auth.lan.local`**, Postgres standby in **sync**, and has **served traffic while Site A was stopped** (SPA failover drill passed).
 
 For the full dual-site story, see the root [README.md](../README.md).
 
 ---
 
-## Shared hostname (auth.lan.local) — do this on Windows
+## Shared hostname (auth.lan.local)
 
-Linux Site A already uses public URL `https://auth.lan.local:8443`. Windows must match:
+Both sites use public URL `https://auth.lan.local:8443`. If rebuilding Windows Site B:
 
 ```bash
 git pull
@@ -20,15 +19,14 @@ oc -n rhbk-mc wait --for=condition=Ready keycloaks.k8s.keycloak.org/keycloak-b -
 oc -n rhbk-mc get route   # expect host auth.lan.local
 ```
 
-Add hosts on Windows (and clients):
+Hosts:
 
 ```
 192.168.0.114  auth.lan.local
 ```
 
-Then on Linux: `./scripts/apply-haproxy-site-b.sh`
-
-SPA: see [`apps/poc-spa/README.md`](../apps/poc-spa/README.md).
+On Linux: `./scripts/apply-haproxy-site-b.sh`  
+SPA: [`apps/poc-spa/README.md`](../apps/poc-spa/README.md).
 
 ---
 
@@ -37,7 +35,8 @@ SPA: see [`apps/poc-spa/README.md`](../apps/poc-spa/README.md).
 1. Podman + CRC installed; repo cloned from GitHub.
 2. Postgres standby created with `postgres/standby/start-standby.ps1` (named volume `pg-standby-site-b-data`).
 3. Linux ran `scripts/enable-sync-replication.sh` → `sync_state=sync`.
-4. Keycloak Operator 26.7 + CR deployed via `scripts/deploy-site-b.sh` (`stateless`, `cluster-b`, JDBC → `192.168.0.114:5432`).
+4. Keycloak Operator 26.7 + CR (`stateless`, `cluster-b`, JDBC → `192.168.0.114:5432`, hostname `https://auth.lan.local:8443`).
+5. Validated as active LB backend when Linux Site A was stopped.
 5. Linux HAProxy retargeted with `scripts/apply-haproxy-site-b.sh` (`site_b` → `192.168.0.102:443`).
 
 ---
