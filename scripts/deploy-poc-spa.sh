@@ -1,7 +1,12 @@
 #!/usr/bin/env bash
+# DEPRECATED — CRC nginx SPA deploy was abandoned. Use Linux:
+#   cd apps/poc-spa && npm start  →  https://auth.lan.local:8444
+# Historical script below is disabled.
 # Deploy PoC SPA as nginx pod on Site B CRC — no host npm required.
 # Run after: oc login to Windows CRC, namespace rhbk-mc exists.
 set -euo pipefail
+echo "DEPRECATED: use apps/poc-spa npm start on Linux (https://auth.lan.local:8444)." >&2
+exit 1
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 # oc on Windows needs native paths (Git Bash /d/... is not accepted)
 if command -v cygpath >/dev/null 2>&1; then

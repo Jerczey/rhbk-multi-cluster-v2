@@ -6,7 +6,10 @@ On Linux, Windows, and any browser client, add:
 192.168.0.114  auth.lan.local
 ```
 
-SPA and OIDC always use: **https://auth.lan.local:8443**
+| Service | URL |
+|---------|-----|
+| OIDC / HAProxy | **https://auth.lan.local:8443** |
+| PoC SPA (Linux Node HTTPS) | **https://auth.lan.local:8444** |
 
 Optional (direct site debug, not required for the SPA):
 

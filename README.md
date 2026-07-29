@@ -10,7 +10,7 @@ Official guides used (see `docs/`):
 
 ---
 
-## Current status (2026-07-27)
+## Current status (2026-07-29)
 
 | Check | Result |
 |--------|--------|
@@ -18,10 +18,10 @@ Official guides used (see `docs/`):
 | OIDC issuer | `https://auth.lan.local:8443/realms/poc-realm` |
 | HAProxy `/lb-check` | **UP** — backends use SNI `auth.lan.local` to both CRCs |
 | Site A / Site B | Both deployed with shared hostname; HAProxy marks a site **DOWN** when its Keycloak is stopped |
-| **Failover drill** | **Proven:** Site A Keycloak stopped on Linux; SPA / login / token refresh kept working via **Site B (Windows)** |
+| **Failover drill** | **Proven:** Site A Keycloak / CRC stopped on Linux; SPA / login / token refresh kept working via **Site B (Windows)** |
 | Postgres sync | **`site_b_standby`** @ `192.168.0.102` — `streaming` / `sync` |
-| PoC SPA | [`apps/poc-spa`](apps/poc-spa) — nginx pod on CRC (`poc-spa.apps-crc.testing`); users `alice`/`alice`, `bob`/`bob` |
-| GitHub | https://github.com/Jerczey/rhbk-multi-cluster-v2 (private) |
+| PoC SPA | [`apps/poc-spa`](apps/poc-spa) — Node on **Linux** (`https://auth.lan.local:8444`); users `alice`/`alice`, `bob`/`bob` |
+| GitHub | https://github.com/Jerczey/rhbk-multi-cluster-v2 (**public**) |
 
 **Hosts**
 
@@ -35,7 +35,7 @@ Official guides used (see `docs/`):
 
 ```mermaid
 flowchart LR
-  SPA[PoC SPA poc-spa.apps-crc.testing] -->|"OIDC auth.lan.local:8443"| LB[HAProxy :8443 on Linux]
+  SPA[PoC SPA Linux HTTPS :8444] -->|"OIDC auth.lan.local:8443"| LB[HAProxy :8443 on Linux]
   LB --> KCA[Keycloak cluster-a Linux CRC]
   LB --> KCB[Keycloak cluster-b Windows CRC]
   KCA --> PGA[Postgres PRIMARY Linux :5432]
@@ -95,23 +95,24 @@ It is necessary but not sufficient by itself:
 
 ## PoC SPA (multi-site recovery)
 
-Enriched app based on the RHBK `js/spa` quickstart. Runs as an **nginx pod** on Windows CRC (no host npm). Full steps: [`apps/poc-spa/README.md`](apps/poc-spa/README.md).
+Enriched app based on the RHBK `js/spa` quickstart. Runs as **Node on the Linux host** (HTTP `:8080` for local use, HTTPS `:8444` for LAN / Windows browsers). Full steps: [`apps/poc-spa/README.md`](apps/poc-spa/README.md).
 
 ```bash
-# /etc/hosts: 192.168.0.114 auth.lan.local
-./scripts/deploy-poc-spa.sh
-# https://poc-spa.apps-crc.testing — alice/alice or bob/bob
+# /etc/hosts on Linux and Windows: 192.168.0.114 auth.lan.local
+cd apps/poc-spa && npm install && npm run setup-realm && npm start
+# Local:  http://localhost:8080
+# From Windows / LAN: https://auth.lan.local:8444  (alice/alice or bob/bob)
 ```
 
-Optional local Node: `cd apps/poc-spa && npm install && npm run setup-realm && npm start`
-
-Accept the self-signed cert once at https://auth.lan.local:8443/lb-check before logging in.  
+Accept the self-signed cert once at https://auth.lan.local:8443/lb-check (and again for `:8444` if prompted).  
 **Check auth health** in the UI uses same-origin `/api/lb-check` (avoids browser TLS/CORS issues).
+
+Do **not** use plain `http://192.168.0.114:8080` from another host — browsers block Web Crypto / PKCE outside a secure context.
 
 ### Proven drill — Site A down
 
-1. Log in to the SPA through `auth.lan.local:8443`.
-2. Stop Site A Keycloak on Linux (scale/delete pod or stop the deployment).
+1. Log in to the SPA (OIDC via `auth.lan.local:8443`).
+2. Stop Site A Keycloak on Linux (scale/delete pod) **or** `crc stop` on Linux (platform failure; leave Podman Postgres + HAProxy up).
 3. HAProxy takes `site_a` out of rotation; `site_b` (Windows) keeps serving.
 4. SPA **Refresh token** / continued use works; issuer stays `https://auth.lan.local:8443/realms/poc-realm`.
 
@@ -121,12 +122,12 @@ Bring Site A back when ready; it rejoins the LB when `/lb-check` is healthy agai
 
 ## What was done — Site A (Linux)
 
-1. **Network / firewall** — LAN to `192.168.0.102`; Postgres `5432`, HAProxy `8443`, optional HTTP share `8765`.
+1. **Network / firewall** — LAN to `192.168.0.102`; Postgres `5432`, HAProxy `8443`, SPA HTTPS `8444`, optional HTTP share `8765`.
 2. **Podman Postgres primary** (`pg-primary-site-a`) — sync slot `site_b_standby`; `scripts/enable-sync-replication.sh` (no live `chown` of data dir).
 3. **CRC + Keycloak Site A** — ns `rhbk-mc`, Operator 26.7, `stateless`, `cluster-a`, JDBC → `192.168.0.114:5432`.
 4. **Shared hostname** — both CRs use `hostname: https://auth.lan.local:8443`; OpenShift route host `auth.lan.local`.
 5. **HAProxy** (`kc-haproxy-lb`) — `:8443`, health `GET /lb-check`, SNI `auth.lan.local` to Linux + Windows CRC routers.
-6. **SPA** — [`apps/poc-spa`](apps/poc-spa) with Red Hat branding and recovery panel.
+6. **SPA** — [`apps/poc-spa`](apps/poc-spa) with Red Hat branding, recovery panel, HTTPS on `:8444` for LAN clients.
 7. Temporary Linux-only `keycloak-b` / local standby were removed once Windows owned Site B.
 
 ---
@@ -137,7 +138,7 @@ Bring Site A back when ready; it rejoins the LB when `/lb-check` is healthy agai
 2. Postgres sync standby via `postgres/standby/start-standby.ps1` (named volume).
 3. Keycloak `cluster-b`, same DB primary, shared `auth.lan.local` hostname (see [`scripts/WINDOWS-SITE-B.md`](scripts/WINDOWS-SITE-B.md)).
 4. Serves traffic when Site A is down (verified in failover drill).
-5. PoC SPA nginx pod via `scripts/deploy-poc-spa.sh` → `https://poc-spa.apps-crc.testing`.
+5. SPA is **not** deployed on Windows CRC — use the Linux SPA at **https://auth.lan.local:8444** from a Windows browser.
 
 ---
 
@@ -153,8 +154,8 @@ podman exec pg-primary-site-a psql -U keycloak -d keycloak \
   -c "SELECT application_name, client_addr, state, sync_state FROM pg_stat_replication;"
 # expect: site_b_standby | 192.168.0.102 | streaming | sync
 
-# SPA health proxy (pod Route or local npm start)
-curl -sk https://poc-spa.apps-crc.testing/api/lb-check
+# SPA health proxy (while npm start is running)
+curl -sk https://auth.lan.local:8444/api/lb-check
 # or: curl -s http://127.0.0.1:8080/api/lb-check
 ```
 
@@ -177,12 +178,11 @@ oc get secret keycloak-initial-admin -n rhbk-mc -o jsonpath='{.data.password}' |
 | `scripts/enable-sync-replication.sh` | Linux | Enable sync wait for `site_b_standby` |
 | `scripts/deploy-site-a.sh` | Linux | Operator + Keycloak `cluster-a` |
 | `scripts/deploy-site-b.sh` | Windows | Operator + Keycloak `cluster-b` |
-| `scripts/deploy-poc-spa.sh` | Windows | PoC SPA nginx pod + Route |
 | `scripts/apply-haproxy-site-b.sh` | Linux | Point HAProxy `site_b` at Windows CRC |
 | `lb/start-haproxy.sh` | Linux | Start / recreate HAProxy |
 | `scripts/promote-standby.sh` | Either | DB failover notes |
 | `scripts/verify-poc.sh` | Linux | Smoke checks |
-| `apps/poc-spa` (`npm start` / `setup-realm`) | Optional | Local Node SPA |
+| `apps/poc-spa` (`npm start` / `setup-realm`) | Linux | Recovery SPA (HTTP + HTTPS) |
 
 Credentials (gitignored): `secrets/*.env.example` → `secrets/*.env`. TLS: `scripts/gen-tls-secret.sh`.
 
