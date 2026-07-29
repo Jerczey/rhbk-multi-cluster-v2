@@ -21,10 +21,12 @@ Serves static assets from an **nginx** pod via OpenShift Route. Requires `oc` lo
 
 Client `poc-spa` must allow:
 
-- `https://poc-spa.apps-crc.testing/*` (and origin `https://poc-spa.apps-crc.testing`)
-- optionally `http://localhost:8080/*` for local runs
+- `https://auth.lan.local:8444/*` (LAN HTTPS SPA — preferred from Windows)
+- `https://192.168.0.114:8444/*`
+- `http://localhost:8080/*` for local Node on the same machine
+- optionally `http://192.168.0.114:8080/*` (HTTP to IP lacks Web Crypto; prefer HTTPS)
 
-If the realm was already created with only localhost, add the route URI in Keycloak Admin (Clients → poc-spa → Valid redirect URIs / Web origins), or re-run realm setup from a machine that has Node (below).
+If the realm was created earlier without these, add them in Keycloak Admin (Clients → poc-spa → Valid redirect URIs / Web origins), or re-run realm setup from a machine that has Node (below).
 
 CRC must not be under **DiskPressure** or the pod stays Pending.
 
@@ -37,6 +39,14 @@ CRC must not be under **DiskPressure** or the pod stays Pending.
    ```
 
 2. **Trust the lab certificate once:** open https://auth.lan.local:8443/lb-check in the browser and accept the warning (self-signed). Login redirects need this.
+
+   From **Windows** (or any non-localhost browser), do **not** use `http://192.168.0.114:8080` — browsers block Web Crypto / PKCE on plain HTTP to an IP. Use instead:
+
+   ```
+   https://192.168.0.114:8444
+   ```
+
+   Accept the same lab cert if prompted. `http://localhost:8080` on the Linux host itself is fine.
 
 3. HAProxy + both Keycloak sites using hostname `https://auth.lan.local:8443`.
 

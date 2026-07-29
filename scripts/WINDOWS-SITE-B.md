@@ -31,10 +31,7 @@ On Linux: `./scripts/apply-haproxy-site-b.sh`
 
 ```bash
 ./scripts/deploy-poc-spa.sh
-# open https://poc-spa.apps-crc.testing
-```
-
-Ensure Keycloak client `poc-spa` allows redirect URI `https://poc-spa.apps-crc.testing/*` (see [`apps/poc-spa/config/realm-clients.json`](../apps/poc-spa/config/realm-clients.json)). Details: [`apps/poc-spa/README.md`](../apps/poc-spa/README.md).
+SPA from Windows: open **https://auth.lan.local:8444** (Linux HTTPS SPA). Ensure Keycloak client `poc-spa` allows that redirect URI (see [`apps/poc-spa/config/realm-clients.json`](../apps/poc-spa/config/realm-clients.json)). Details: [`apps/poc-spa/README.md`](../apps/poc-spa/README.md).
 
 
 ---
