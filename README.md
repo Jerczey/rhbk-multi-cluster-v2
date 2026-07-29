@@ -10,7 +10,7 @@ Official guides used (see `docs/`):
 
 ---
 
-## Current status (2026-07-29)
+## Last verified (2026-07-29)
 
 | Check | Result |
 |--------|--------|

@@ -46,7 +46,7 @@ Ensure Keycloak client `poc-spa` allows redirect URI `https://auth.lan.local:844
 3. Linux ran `scripts/enable-sync-replication.sh` → `sync_state=sync`.
 4. Keycloak Operator 26.7 + CR (`stateless`, `cluster-b`, JDBC → `192.168.0.114:5432`, hostname `https://auth.lan.local:8443`).
 5. Validated as active LB backend when Linux Site A was stopped.
-5. Linux HAProxy retargeted with `scripts/apply-haproxy-site-b.sh` (`site_b` → `192.168.0.102:443`).
+6. Linux HAProxy retargeted with `scripts/apply-haproxy-site-b.sh` (`site_b` → `192.168.0.102:443`).
 
 ---
 
@@ -109,10 +109,10 @@ export APPS_DOMAIN=$(oc get ingresses.config.openshift.io cluster -o jsonpath='{
 Confirm:
 
 ```bash
-curl -sk https://keycloak-b.apps-crc.testing/lb-check   # on Windows host
+# On Windows host (route host is auth.lan.local):
+curl -sk https://auth.lan.local/lb-check
 # From Linux LAN:
-curl -sk --resolve keycloak-b.apps-crc.testing:443:192.168.0.102 \
-  https://keycloak-b.apps-crc.testing/lb-check
+curl -sk --resolve auth.lan.local:443:192.168.0.102 https://auth.lan.local/lb-check
 ```
 
 ---
@@ -121,8 +121,9 @@ curl -sk --resolve keycloak-b.apps-crc.testing:443:192.168.0.102 \
 
 | Name | Points to |
 |------|-----------|
-| `keycloak-a.apps-crc.testing` | Linux CRC / Site A path |
-| `keycloak-b.apps-crc.testing` | Windows CRC — LAN clients use `192.168.0.102` (`crc ip` is often `127.0.0.1` **on** the Windows host itself) |
+| `auth.lan.local` | `192.168.0.114` (HAProxy `:8443` + SPA `:8444`) |
+| `keycloak-a.apps-crc.testing` | Optional debug only — Linux CRC |
+| `keycloak-b.apps-crc.testing` | Optional debug only — Windows CRC LAN `192.168.0.102` |
 
 ---
 

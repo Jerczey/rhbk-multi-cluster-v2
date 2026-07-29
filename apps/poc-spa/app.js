@@ -60,8 +60,9 @@ if (fs.existsSync(tlsCert) && fs.existsSync(tlsKey)) {
   };
   https.createServer(creds, app).listen(httpsPort, () => {
     console.log(
-      `PoC SPA HTTPS https://192.168.0.114:${httpsPort}  (use this from Windows — secure context / Web Crypto)`
+      `PoC SPA HTTPS https://auth.lan.local:${httpsPort}  (preferred from Windows — secure context / Web Crypto)`
     );
+    console.log(`Also: https://192.168.0.114:${httpsPort}`);
   });
 } else {
   console.warn(
