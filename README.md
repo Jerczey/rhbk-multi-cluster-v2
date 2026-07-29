@@ -45,6 +45,54 @@ flowchart LR
 
 ---
 
+## Why `stateless` / multi-cluster v2
+
+### Main attribute
+
+With `features.enabled: [stateless]` (Keycloak **26.7** in this PoC), each site can answer any request **without sticky sessions** and **without sharing an Infinispan cluster across sites**.
+
+- Local embedded caches stay **per site** (`spi-cache-embedded--default--cluster-name`: `cluster-a` / `cluster-b` in the CRs).
+- State that must survive site failover is **externalized** (mainly to the shared database).
+- Clients keep one public issuer: `https://auth.lan.local:8443`.
+
+So “stateless” here does **not** mean “no data.” It means the Keycloak process is not the cross-site source of truth: **no reliance on in-memory cluster state across the WAN**.
+
+### Why this was hard before
+
+Older multi-node / multi-DC Keycloak assumed:
+
+- Sessions, authentication sessions, and related runtime state lived primarily in **embedded Infinispan**.
+- Nodes needed **sticky load balancing** and/or **cache replication**.
+- Multi-datacenter usually meant **Infinispan cross-site (XSite)** — WAN latency, split-brain risk, and heavy operations.
+
+A **shared Postgres alone did not fix multi-cluster** in that model: the hot path still depended on memory the other site did not have. Mid-login or token refresh after failing over to another site would break without stickiness or XSite.
+
+### What made the current design possible
+
+Roughly three shifts (Keycloak multi-cluster deployments **v2** / community **~26.x**; this lab needs **26.7+** — RHBK Operator catalogs that top out at 26.6.x do not expose this path yet):
+
+1. **Persist cross-site-critical session-related state** so another site can read it from storage.
+2. **Keep embedded cache per site only** (local performance), not as the multi-site source of truth.
+3. **One public hostname / issuer** plus an LB health check (`/lb-check`) so clients do not care which CRC answers.
+
+### Is the database the main solver?
+
+**For multi-cluster Keycloak: the shared DB is the main shared brain** — realms, users, keys, and the persisted session-related state both sites need.
+
+It is necessary but not sufficient by itself:
+
+| Piece | Role |
+|--------|------|
+| **Shared DB** (both sites JDBC → Postgres primary on Linux in this lab) | Same users, realm, keys, and persisted session state |
+| **`stateless` feature** | Stops depending on cross-site Infinispan / sticky affinity |
+| **Same hostname / issuer** | Tokens and redirects stay valid after failover |
+| **HAProxy `/lb-check`** | Removes a dead Keycloak site from rotation |
+| **Postgres sync standby** (Windows) | **Database DR**, not Keycloak session affinity — promote remains a separate, manual path |
+
+**Takeaway:** **shared DB + `stateless` together** enable “either site can serve the IdP.” The DB without `stateless` was never enough for multi-site failover; `stateless` without a shared (or consistently replicated) DB would not work either. The Site A–down drill in this PoC is that combination working.
+
+---
+
 ## PoC SPA (multi-site recovery)
 
 Enriched app based on the RHBK `js/spa` quickstart. Runs as an **nginx pod** on Windows CRC (no host npm). Full steps: [`apps/poc-spa/README.md`](apps/poc-spa/README.md).
