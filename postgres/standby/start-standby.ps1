@@ -55,7 +55,7 @@ podman run --rm `
   -v "${VOLUME_NAME}:/var/lib/postgresql/data:Z" `
   -v "${cfgMount}/configure-standby.sh:/configure-standby.sh:ro,Z" `
   $POSTGRES_IMAGE `
-  sh /configure-standby.sh
+  sh -c "tr -d '\r' < /configure-standby.sh | sh"
 
 if ($LASTEXITCODE -ne 0) {
   throw "standby config step failed with exit $LASTEXITCODE"
