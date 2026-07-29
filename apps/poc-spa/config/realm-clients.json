@@ -8,11 +8,15 @@
     "standardFlowEnabled": true,
     "redirectUris": [
       "http://localhost:8080/*",
-      "https://poc-spa.apps-crc.testing/*"
+      "http://192.168.0.114:8080/*",
+      "https://192.168.0.114:8444/*",
+      "https://auth.lan.local:8444/*"
     ],
     "webOrigins": [
       "http://localhost:8080",
-      "https://poc-spa.apps-crc.testing"
+      "http://192.168.0.114:8080",
+      "https://192.168.0.114:8444",
+      "https://auth.lan.local:8444"
     ],
     "attributes": {
       "pkce.code.challenge.method": "S256"
