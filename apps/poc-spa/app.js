@@ -1,5 +1,4 @@
 import express from 'express';
-import url from 'node:url';
 import https from 'node:https';
 
 const app = express();
@@ -33,15 +32,11 @@ app.get('/api/lb-check', async (_req, res) => {
   }
 });
 
+// Static tree includes vendored keycloak-js at public/vendor/keycloak.js
 app.use('/', express.static('public'));
-app.use('/vendor/keycloak.js', express.static(resolveDependency('keycloak-js')));
 
 app.listen(port, () => {
   console.log(`PoC SPA listening on http://localhost:${port}`);
   console.log(`Auth server: ${AUTH_URL} (poc-realm / poc-spa)`);
   console.log(`Health proxy: http://localhost:${port}/api/lb-check`);
 });
-
-function resolveDependency(module) {
-  return url.fileURLToPath(import.meta.resolve(module));
-}

@@ -6,8 +6,14 @@
     "publicClient": true,
     "directAccessGrantsEnabled": true,
     "standardFlowEnabled": true,
-    "redirectUris": ["http://localhost:8080/*"],
-    "webOrigins": ["http://localhost:8080"],
+    "redirectUris": [
+      "http://localhost:8080/*",
+      "https://poc-spa.apps-crc.testing/*"
+    ],
+    "webOrigins": [
+      "http://localhost:8080",
+      "https://poc-spa.apps-crc.testing"
+    ],
     "attributes": {
       "pkce.code.challenge.method": "S256"
     }

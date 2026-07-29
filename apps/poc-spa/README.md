@@ -2,6 +2,32 @@
 
 Red Hat–branded SPA adapted from [`rhbk-quickstarts/js/spa`](https://github.com/redhat-developer/rhbk-quickstarts), pointed at the shared auth URL.
 
+## Deploy on CRC (recommended — no host npm)
+
+Serves static assets from an **nginx** pod via OpenShift Route. Requires `oc` logged into Site B CRC and namespace `rhbk-mc`.
+
+```bash
+# hosts: 192.168.0.114 auth.lan.local   (see docs/HOSTS.md)
+./scripts/deploy-poc-spa.sh
+# open https://poc-spa.apps-crc.testing
+```
+
+| User | Password | Roles |
+|------|----------|--------|
+| alice | alice | user |
+| bob | bob | user |
+
+### Keycloak client redirect URIs
+
+Client `poc-spa` must allow:
+
+- `https://poc-spa.apps-crc.testing/*` (and origin `https://poc-spa.apps-crc.testing`)
+- optionally `http://localhost:8080/*` for local runs
+
+If the realm was already created with only localhost, add the route URI in Keycloak Admin (Clients → poc-spa → Valid redirect URIs / Web origins), or re-run realm setup from a machine that has Node (below).
+
+CRC must not be under **DiskPressure** or the pod stays Pending.
+
 ## Prerequisites
 
 1. Hosts entry (see [`docs/HOSTS.md`](../../docs/HOSTS.md)):
@@ -21,21 +47,18 @@ Red Hat–branded SPA adapted from [`rhbk-quickstarts/js/spa`](https://github.co
    # https://auth.lan.local:8443/realms/poc-realm
    ```
 
-**Check auth health** uses same-origin `/api/lb-check` (Express proxies to HAProxy with the lab cert). Do not call `https://auth.lan.local:8443/lb-check` from browser JS — TLS/CORS will fail.
+**Check auth health** uses same-origin `/api/lb-check` (nginx or Express proxies to HAProxy with the lab cert). Do not call `https://auth.lan.local:8443/lb-check` from browser JS — TLS/CORS will fail.
 
-## Setup
+## Optional: local Node (not required on Windows)
 
 ```bash
 cd apps/poc-spa
 npm install
-npm run setup-realm   # ensures poc-spa client + alice/bob on poc-realm
+npm run setup-realm   # ensures poc-spa client + alice/bob on poc-realm (needs Node once)
 npm start             # http://localhost:8080
 ```
 
-| User | Password | Roles |
-|------|----------|--------|
-| alice | alice | user |
-| bob | bob | user |
+`public/vendor/keycloak.js` is vendored so the cluster path does not need `node_modules`. Local `npm start` serves the same `public/` tree and provides `/api/lb-check`.
 
 ## Recovery drills
 
@@ -45,7 +68,7 @@ Site A Keycloak was stopped on the Linux laptop. SPA login / session / token ref
 
 ### Steps
 
-1. Open http://localhost:8080 → **Log in** as `alice` or `bob`.
+1. Open https://poc-spa.apps-crc.testing (or http://localhost:8080) → **Log in** as `alice` or `bob`.
 2. Confirm **Issuer** shows `https://auth.lan.local:8443/realms/poc-realm`.
 3. Click **Check auth health** → expect Auth LB UP.
 4. **Site A down** (Linux), for example:
