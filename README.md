@@ -20,7 +20,7 @@ Official guides used (see `docs/`):
 | Site A / Site B | Both deployed with shared hostname; HAProxy marks a site **DOWN** when its Keycloak is stopped |
 | **Failover drill** | **Proven:** Site A Keycloak stopped on Linux; SPA / login / token refresh kept working via **Site B (Windows)** |
 | Postgres sync | **`site_b_standby`** @ `192.168.0.102` — `streaming` / `sync` |
-| PoC SPA | [`apps/poc-spa`](apps/poc-spa) — users `alice`/`alice`, `bob`/`bob` |
+| PoC SPA | [`apps/poc-spa`](apps/poc-spa) — nginx pod on CRC (`poc-spa.apps-crc.testing`); users `alice`/`alice`, `bob`/`bob` |
 | GitHub | https://github.com/Jerczey/rhbk-multi-cluster-v2 (private) |
 
 **Hosts**
@@ -35,7 +35,7 @@ Official guides used (see `docs/`):
 
 ```mermaid
 flowchart LR
-  SPA[PoC SPA localhost:8080] -->|"OIDC auth.lan.local:8443"| LB[HAProxy :8443 on Linux]
+  SPA[PoC SPA poc-spa.apps-crc.testing] -->|"OIDC auth.lan.local:8443"| LB[HAProxy :8443 on Linux]
   LB --> KCA[Keycloak cluster-a Linux CRC]
   LB --> KCB[Keycloak cluster-b Windows CRC]
   KCA --> PGA[Postgres PRIMARY Linux :5432]
@@ -47,13 +47,15 @@ flowchart LR
 
 ## PoC SPA (multi-site recovery)
 
-Enriched app based on the RHBK `js/spa` quickstart. Full steps: [`apps/poc-spa/README.md`](apps/poc-spa/README.md).
+Enriched app based on the RHBK `js/spa` quickstart. Runs as an **nginx pod** on Windows CRC (no host npm). Full steps: [`apps/poc-spa/README.md`](apps/poc-spa/README.md).
 
 ```bash
 # /etc/hosts: 192.168.0.114 auth.lan.local
-cd apps/poc-spa && npm install && npm run setup-realm && npm start
-# http://localhost:8080 — alice/alice or bob/bob
+./scripts/deploy-poc-spa.sh
+# https://poc-spa.apps-crc.testing — alice/alice or bob/bob
 ```
+
+Optional local Node: `cd apps/poc-spa && npm install && npm run setup-realm && npm start`
 
 Accept the self-signed cert once at https://auth.lan.local:8443/lb-check before logging in.  
 **Check auth health** in the UI uses same-origin `/api/lb-check` (avoids browser TLS/CORS issues).
@@ -87,6 +89,7 @@ Bring Site A back when ready; it rejoins the LB when `/lb-check` is healthy agai
 2. Postgres sync standby via `postgres/standby/start-standby.ps1` (named volume).
 3. Keycloak `cluster-b`, same DB primary, shared `auth.lan.local` hostname (see [`scripts/WINDOWS-SITE-B.md`](scripts/WINDOWS-SITE-B.md)).
 4. Serves traffic when Site A is down (verified in failover drill).
+5. PoC SPA nginx pod via `scripts/deploy-poc-spa.sh` → `https://poc-spa.apps-crc.testing`.
 
 ---
 
@@ -102,8 +105,9 @@ podman exec pg-primary-site-a psql -U keycloak -d keycloak \
   -c "SELECT application_name, client_addr, state, sync_state FROM pg_stat_replication;"
 # expect: site_b_standby | 192.168.0.102 | streaming | sync
 
-# SPA health proxy (while npm start is running)
-curl -s http://127.0.0.1:8080/api/lb-check
+# SPA health proxy (pod Route or local npm start)
+curl -sk https://poc-spa.apps-crc.testing/api/lb-check
+# or: curl -s http://127.0.0.1:8080/api/lb-check
 ```
 
 Keycloak admin (Linux CRC bootstrap secret):
@@ -123,12 +127,14 @@ oc get secret keycloak-initial-admin -n rhbk-mc -o jsonpath='{.data.password}' |
 | `postgres/standby/start-standby.ps1` | Windows | Standby via named volume |
 | `postgres/standby/configure-standby.sh` | Windows | Standby helpers |
 | `scripts/enable-sync-replication.sh` | Linux | Enable sync wait for `site_b_standby` |
-| `scripts/deploy-site-a.sh` / `deploy-site-b.sh` | Each CRC | Operator + Keycloak |
-| `scripts/apply-haproxy-site-b.sh` | Linux | HAProxy Site B backend |
+| `scripts/deploy-site-a.sh` | Linux | Operator + Keycloak `cluster-a` |
+| `scripts/deploy-site-b.sh` | Windows | Operator + Keycloak `cluster-b` |
+| `scripts/deploy-poc-spa.sh` | Windows | PoC SPA nginx pod + Route |
+| `scripts/apply-haproxy-site-b.sh` | Linux | Point HAProxy `site_b` at Windows CRC |
 | `lb/start-haproxy.sh` | Linux | Start / recreate HAProxy |
 | `scripts/promote-standby.sh` | Either | DB failover notes |
 | `scripts/verify-poc.sh` | Linux | Smoke checks |
-| `apps/poc-spa` (`npm start` / `setup-realm`) | Linux | Recovery SPA |
+| `apps/poc-spa` (`npm start` / `setup-realm`) | Optional | Local Node SPA |
 
 Credentials (gitignored): `secrets/*.env.example` → `secrets/*.env`. TLS: `scripts/gen-tls-secret.sh`.
 

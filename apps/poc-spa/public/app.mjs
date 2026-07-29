@@ -140,7 +140,7 @@ els.checkHealth.addEventListener("click", async () => {
   } catch (err) {
     setChip(els.healthChip, "err", "Unreachable");
     els.recoveryHint.textContent =
-      "Could not reach the SPA health proxy. Is npm start still running?";
+      "Could not reach the SPA health proxy (/api/lb-check). Is the pod/route up, or is npm start running?";
     console.error(err);
   }
 });
