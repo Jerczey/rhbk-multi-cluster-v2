@@ -97,6 +97,12 @@ function showLoggedOut() {
   els.recoveryHint.textContent = "Log in, then run a site failover and use Refresh token.";
 }
 
+const keycloak = new Keycloak({
+  url: AUTH_URL,
+  realm: REALM,
+  clientId: CLIENT_ID,
+});
+
 els.login.addEventListener("click", () => keycloak.login());
 els.logout.addEventListener("click", () => keycloak.logout({ redirectUri: window.location.origin + "/" }));
 els.showIdToken.addEventListener("click", () => showToken("ID token", keycloak.idTokenParsed));
@@ -145,15 +151,12 @@ els.checkHealth.addEventListener("click", async () => {
   }
 });
 
-const keycloak = new Keycloak({
-  url: AUTH_URL,
-  realm: REALM,
-  clientId: CLIENT_ID,
-});
+// Show Log in immediately. Do not use onLoad: check-sso — silent SSO against the
+// lab self-signed cert often hangs and left the button hidden forever in the pod UI.
+showLoggedOut();
 
 try {
   const authenticated = await keycloak.init({
-    onLoad: "check-sso",
     pkceMethod: "S256",
     checkLoginIframe: false,
   });
@@ -161,13 +164,11 @@ try {
     showProfile();
     els.recoveryHint.textContent =
       "Tip: oc delete pod keycloak-0 -n rhbk-mc on Linux, then Refresh token.";
-  } else {
-    showLoggedOut();
   }
-  } catch (err) {
+} catch (err) {
   showLoggedOut();
   setChip(els.healthChip, "err", "Init failed");
   els.recoveryHint.textContent =
-    "Keycloak init failed. Open https://auth.lan.local:8443 once and accept the self-signed certificate, then reload this page.";
+    "Keycloak init failed. Open https://auth.lan.local:8443/lb-check once and accept the self-signed certificate, then reload this page.";
   console.error(err);
 }
