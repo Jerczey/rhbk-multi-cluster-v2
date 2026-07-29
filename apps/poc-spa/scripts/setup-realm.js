@@ -15,27 +15,35 @@ const repoRoot = resolve(root, '../..');
 const cfg = JSON.parse(readFileSync(resolve(root, 'config/config.json'), 'utf8'));
 const desired = JSON.parse(readFileSync(resolve(root, 'config/realm-clients.json'), 'utf8'));
 
-function loadAdminPassword() {
-  if (process.env.KC_ADMIN_PASSWORD) return process.env.KC_ADMIN_PASSWORD.trim();
+function loadAdminEnv() {
+  const out = {};
+  if (process.env.KC_ADMIN_USER) out.user = process.env.KC_ADMIN_USER.trim();
+  if (process.env.KC_ADMIN_PASSWORD) out.password = process.env.KC_ADMIN_PASSWORD.trim();
   const envFile = resolve(repoRoot, 'secrets/keycloak-admin.env');
   if (existsSync(envFile)) {
     const text = readFileSync(envFile, 'utf8');
-    const m = text.match(/^KC_ADMIN_PASSWORD=(.*)$/m);
-    if (m) return m[1].trim();
+    const user = text.match(/^KC_ADMIN_USER=(.*)$/m);
+    const pass = text.match(/^KC_ADMIN_PASSWORD=(.*)$/m);
+    if (!out.user && user) out.user = user[1].trim();
+    if (!out.password && pass) out.password = pass[1].trim();
   }
-  const b64 = execSync(
-    "oc get secret keycloak-initial-admin -n rhbk-mc -o jsonpath='{.data.password}'",
-    { encoding: 'utf8' }
-  ).trim();
-  return Buffer.from(b64, 'base64').toString('utf8');
+  if (!out.password) {
+    const b64 = execSync(
+      "oc get secret keycloak-initial-admin -n rhbk-mc -o jsonpath='{.data.password}'",
+      { encoding: 'utf8' }
+    ).trim();
+    out.password = Buffer.from(b64, 'base64').toString('utf8');
+  }
+  out.user = out.user || 'temp-admin';
+  return out;
 }
 
-const adminPassword = loadAdminPassword();
+const { user: adminUser, password: adminPassword } = loadAdminEnv();
 const baseUrl = cfg.keycloak.url;
 const admin = new KcAdminClient({ baseUrl, realmName: 'master' });
 
 await admin.auth({
-  username: process.env.KC_ADMIN_USER || 'temp-admin',
+  username: adminUser,
   password: adminPassword,
   grantType: 'password',
   clientId: 'admin-cli',

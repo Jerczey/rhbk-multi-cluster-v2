@@ -39,5 +39,5 @@ oc -n "${NS}" wait --for=condition=Ready keycloaks.k8s.keycloak.org/keycloak --t
 }
 
 oc -n "${NS}" get keycloak,pods,route
-echo "Site A URL: https://keycloak-a.apps-crc.testing"
-echo "LB check:   curl -k https://keycloak-a.apps-crc.testing/lb-check"
+echo "Site A hostname: https://auth.lan.local:8443 (via HAProxy)"
+echo "LB check:        curl -sk https://auth.lan.local:8443/lb-check"
