@@ -27,12 +27,15 @@ Hosts:
 
 On Linux: `./scripts/apply-haproxy-site-b.sh`
 
-### PoC SPA (pod — no npm on Windows)
+### PoC SPA (from Windows browser)
 
-```bash
-./scripts/deploy-poc-spa.sh
-SPA from Windows: open **https://auth.lan.local:8444** (Linux HTTPS SPA). Ensure Keycloak client `poc-spa` allows that redirect URI (see [`apps/poc-spa/config/realm-clients.json`](../apps/poc-spa/config/realm-clients.json)). Details: [`apps/poc-spa/README.md`](../apps/poc-spa/README.md).
+SPA runs on **Linux**, not on Windows CRC. After Linux `npm start` in `apps/poc-spa`:
 
+1. Hosts: `192.168.0.114  auth.lan.local`
+2. Trust https://auth.lan.local:8443/lb-check (and `:8444` if prompted)
+3. Open **https://auth.lan.local:8444** — users `alice`/`alice`, `bob`/`bob`
+
+Ensure Keycloak client `poc-spa` allows redirect URI `https://auth.lan.local:8444/*` (see [`apps/poc-spa/config/realm-clients.json`](../apps/poc-spa/config/realm-clients.json)). Details: [`apps/poc-spa/README.md`](../apps/poc-spa/README.md).
 
 ---
 
@@ -135,5 +138,5 @@ curl -sk https://127.0.0.1:8443/lb-check
 `lb/haproxy.cfg` should include:
 
 ```
-server site_b 192.168.0.102:443 ... sni str(keycloak-b.apps-crc.testing) ...
+server site_b 192.168.0.102:443 ... sni str(auth.lan.local) ...
 ```
