@@ -18,9 +18,11 @@ if [[ ! -f "${ROOT}/secrets/tls.crt" ]]; then
   bash "${ROOT}/scripts/gen-tls-secret.sh"
 fi
 
+# Lab PoC placeholder — not a production credential
+DB_PASSWORD='KeycloakPoC2026!' # notsecret
 oc -n "${NS}" create secret generic keycloak-db-secret \
   --from-literal=username=keycloak \
-  --from-literal=password='KeycloakPoC2026!' \
+  --from-literal=password="${DB_PASSWORD}" \
   --dry-run=client -o yaml | oc apply -f -
 
 oc -n "${NS}" create secret tls keycloak-tls-secret \
