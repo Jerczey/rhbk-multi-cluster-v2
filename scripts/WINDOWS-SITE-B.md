@@ -93,7 +93,7 @@ Expect: `site_b_standby | 192.168.0.102 | streaming | sync`.
 
 ```bash
 oc run pgcheck --rm -i --restart=Never --image=docker.io/library/postgres:17-alpine -- \
-  env PGPASSWORD='KeycloakPoC2026!' psql -h 192.168.0.114 -U keycloak -d keycloak -c 'SELECT 1'
+  env PGPASSWORD='KeycloakPoC2026!' psql -h 192.168.0.114 -U keycloak -d keycloak -c 'SELECT 1' # notsecret
 ```
 
 ---

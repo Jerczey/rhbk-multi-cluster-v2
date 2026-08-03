@@ -28,9 +28,11 @@ if [[ ! -f "${ROOT}/secrets/tls.crt" ]]; then
   bash "${ROOT}/scripts/gen-tls-secret.sh"
 fi
 
+# Lab PoC placeholder — not a production credential
+DB_PASSWORD='KeycloakPoC2026!' # notsecret
 oc -n "${NS}" create secret generic keycloak-db-secret \
   --from-literal=username=keycloak \
-  --from-literal=password='KeycloakPoC2026!' \
+  --from-literal=password="${DB_PASSWORD}" \
   --dry-run=client -o yaml | oc apply -f -
 
 oc -n "${NS}" create secret tls keycloak-tls-secret \
@@ -59,4 +61,4 @@ oc -n "${NS}" wait --for=condition=Ready keycloaks.k8s.keycloak.org/keycloak-b -
 oc -n "${NS}" get keycloak,pods,route
 echo "Site B URL: https://${HOSTNAME}"
 echo "LB check:   curl -k https://${HOSTNAME}/lb-check"
-echo "Prove DB path: oc run pgcheck --rm -i --restart=Never --image=postgres:17-alpine -- env PGPASSWORD='KeycloakPoC2026!' psql -h 192.168.0.114 -U keycloak -d keycloak -c 'SELECT 1'"
+echo "Prove DB path: oc run pgcheck --rm -i --restart=Never --image=postgres:17-alpine -- env PGPASSWORD='KeycloakPoC2026!' psql -h 192.168.0.114 -U keycloak -d keycloak -c 'SELECT 1'" # notsecret

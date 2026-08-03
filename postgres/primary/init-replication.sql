@@ -2,7 +2,7 @@
 DO $$
 BEGIN
   IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'replicator') THEN
-    CREATE ROLE replicator WITH REPLICATION LOGIN PASSWORD 'ReplicatorPoC2026!';
+    CREATE ROLE replicator WITH REPLICATION LOGIN PASSWORD 'ReplicatorPoC2026!'; -- notsecret
   END IF;
 END
 $$;
