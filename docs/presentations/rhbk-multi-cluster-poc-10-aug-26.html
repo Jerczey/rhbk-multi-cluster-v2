@@ -1,0 +1,1382 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RHBK multi-cluster v2 PoC — Aug 10, 2026</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Red+Hat+Display:wght@400;700&family=Red+Hat+Text:wght@400;700&family=Red+Hat+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        /* ── DESIGN TOKENS ─────────────────────────────────── */
+        :root {
+            --rh-red:        #EE0000;
+            --rh-red-dark:   #CC0000;
+            --rh-black:      #151515;
+            --rh-white:      #FFFFFF;
+            --rh-gray-light: #f5f5f5;
+            --rh-gray-dark:  #595959;
+        }
+
+        /* ── RESET & BASE ──────────────────────────────────── */
+        * { box-sizing: border-box; }
+
+        body {
+            font-family: 'Red Hat Text', 'Helvetica Neue', Arial, sans-serif;
+            background: #1a1a1a;
+            color: #333333;
+            margin: 0;
+            padding: 0;
+            font-size: 16px;
+            overflow: hidden;
+        }
+
+        h1, h2, h3, h4 {
+            font-family: 'Red Hat Display', 'Helvetica Neue', Arial, sans-serif;
+            text-transform: none;
+            font-weight: 700;
+            color: var(--rh-black);
+        }
+
+        h2 {
+            font-size: 1.1em;
+            margin-bottom: 5px;
+            margin-top: 15px;
+        }
+
+        h3 {
+            font-size: 1.05em;
+            margin-bottom: 5px;
+            margin-top: 10px;
+        }
+
+        p, li {
+            font-size: 1em;
+            line-height: 1.4;
+            margin-bottom: 8px;
+        }
+
+        /* ── PRESENTATION SHELL ────────────────────────────── */
+        .presentation-container {
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            perspective: 1000px;
+        }
+
+        .deck-container {
+            position: relative;
+            height: 100vh;
+            width: 100%;
+            max-width: 1400px;
+            max-height: 900px;
+            margin: 0 auto;
+        }
+
+        /* ── SLIDE BASE ─────────────────────────────────────── */
+        .slide {
+            width: 95vw;
+            height: 95vh;
+            max-width: 1400px;
+            max-height: 900px;
+            margin: 0 auto;
+            padding: 50px 80px 40px 80px;
+            box-sizing: border-box;
+            display: none !important;
+            flex-direction: column;
+            justify-content: flex-start;
+            overflow: hidden;
+            position: relative;
+            background: white;
+            box-shadow: 0 20px 80px rgba(0,0,0,0.3);
+        }
+
+        .slide.active {
+            display: flex !important;
+            animation: slideIn 0.4s ease-out;
+        }
+
+        /* Extra bottom padding on content slides to clear footer logo */
+        .slide:not(.title-slide) {
+            padding-bottom: 100px;
+        }
+
+        /* Footer OIL logo — appears on every content slide automatically.
+           UPDATE THIS PATH when copying the template to a new project. */
+        .slide:not(.title-slide)::after {
+            content: '';
+            position: absolute;
+            bottom: 20px;
+            right: 28px;
+            width: min(300px, 42vw);
+            height: 58px;
+            background-image: url('data:image/svg+xml;base64,PHN2ZyBpZD0iTG9nb3MiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgdmlld0JveD0iMCAwIDEyNjAuMjYgMjQ0Ij48ZGVmcz48c3R5bGU+LmNscy0xe2ZpbGw6I2UwMDt9PC9zdHlsZT48L2RlZnM+PHRpdGxlPkxvZ28tUmVkX0hhdC1PcGVuX0lubm92YXRpb25fTGFicy1BLVN0YW5kYXJkLVJHQjwvdGl0bGU+PG1ldGFkYXRhPjw/eHBhY2tldCBiZWdpbj0i77u/IiBpZD0iVzVNME1wQ2VoaUh6cmVTek5UY3prYzlkIj8+Cjx4OnhtcG1ldGEgeG1sbnM6eD0iYWRvYmU6bnM6bWV0YS8iIHg6eG1wdGs9IkFkb2JlIFhNUCBDb3JlIDguMC1jMDAxIDEuMDAwMDAwLCAwMDAwLzAwLzAwLTAwOjAwOjAwICAgICAgICAiPgogICA8cmRmOlJERiB4bWxuczpyZGY9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkvMDIvMjItcmRmLXN5bnRheC1ucyMiPgogICAgICA8cmRmOkRlc2NyaXB0aW9uIHJkZjphYm91dD0iIgogICAgICAgICAgICB4bWxuczp4bXA9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC8iCiAgICAgICAgICAgIHhtbG5zOmRjPSJodHRwOi8vcHVybC5vcmcvZGMvZWxlbWVudHMvMS4xLyIKICAgICAgICAgICAgeG1sbnM6eG1wUmlnaHRzPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvcmlnaHRzLyI+CiAgICAgICAgIDx4bXA6cmhjYy1lZmZlY3RpdmUtb24+MjAyNC0wMy0wM1QyMjozMzo1MS4yNDhaPC94bXA6cmhjYy1lZmZlY3RpdmUtb24+CiAgICAgICAgIDx4bXA6cmhjYy1tZXRhZGF0YS1jb21wbGV0ZS1tb2RlcmF0b3I+cGVuZGluZzwveG1wOnJoY2MtbWV0YWRhdGEtY29tcGxldGUtbW9kZXJhdG9yPgogICAgICAgICA8eG1wOnJoY2MtdHJhbnNsYXRpb24taWQ+VFJBYWQ3OTRlZDMtOTFlYy00ZjQyLTk3M2QtN2JhNTEzYmVhNGJiPC94bXA6cmhjYy10cmFuc2xhdGlvbi1pZD4KICAgICAgICAgPHhtcDpicmFuZC1jb250ZW50LXR5cGU+TG9nbzwveG1wOmJyYW5kLWNvbnRlbnQtdHlwZT4KICAgICAgICAgPHhtcDpDcmVhdGVEYXRlPjIwMjQtMDMtMDNUMjI6MzM6NTEuMjQ4WjwveG1wOkNyZWF0ZURhdGU+CiAgICAgICAgIDx4bXA6cmhjYy1lZmZlY3RpdmUtb24tc2V0LW9uLXVwbG9hZD50cnVlPC94bXA6cmhjYy1lZmZlY3RpdmUtb24tc2V0LW9uLXVwbG9hZD4KICAgICAgICAgPHhtcDpicmFuZC1jb2xvci1tb2RlPlJHQjwveG1wOmJyYW5kLWNvbG9yLW1vZGU+CiAgICAgICAgIDx4bXA6YnJhbmQtbG9nby12ZXJzaW9uPlR3byBsaW5lPC94bXA6YnJhbmQtbG9nby12ZXJzaW9uPgogICAgICAgICA8eG1wOnJoY2MtbWV0YWRhdGEtY29tcGxldGUtdXBsb2FkZXI+cGVuZGluZzwveG1wOnJoY2MtbWV0YWRhdGEtY29tcGxldGUtdXBsb2FkZXI+CiAgICAgICAgIDx4bXA6cmhjYy1maWxlLWxhc3QtbW9kaWZpZWQ+MjAyNC0wNy0xMlQxODoyNTo0Ni42NTlaPC94bXA6cmhjYy1maWxlLWxhc3QtbW9kaWZpZWQ+CiAgICAgICAgIDx4bXA6cmhjYy1hdWRpZW5jZT5yaGNjLWF1ZGllbmNlOmludGVybmFsPC94bXA6cmhjYy1hdWRpZW5jZT4KICAgICAgICAgPHhtcDpyaGNjLXJpZ2h0cy1yZXN0cmljdGVkPm5vPC94bXA6cmhjYy1yaWdodHMtcmVzdHJpY3RlZD4KICAgICAgICAgPHhtcDpicmFuZC1jb250ZW50LXN1YnR5cGU+UHJvZHVjdCBsb2dvczwveG1wOmJyYW5kLWNvbnRlbnQtc3VidHlwZT4KICAgICAgICAgPHhtcDpyaGNjLWRlcml2YXRpdmUtaWQ+REVSYWQ3OTRlZDMtOTFlYy00ZjQyLTk3M2QtN2JhNTEzYmVhNGJiPC94bXA6cmhjYy1kZXJpdmF0aXZlLWlkPgogICAgICAgICA8eG1wOnJoY2MtdXBsb2FkZWQtYnk+cG1laWxsZXVAcmVkaGF0LmNvbTwveG1wOnJoY2MtdXBsb2FkZWQtYnk+CiAgICAgICAgIDx4bXA6YnJhbmQtbG9nby1jb2xvcj5TdGFuZGFyZDwveG1wOmJyYW5kLWxvZ28tY29sb3I+CiAgICAgICAgIDx4bXA6cmhjYy1ub3RpZnktcG9ydGFsLXN1YnNjcmliZXJzLW9uLWNoYW5nZT55ZXM8L3htcDpyaGNjLW5vdGlmeS1wb3J0YWwtc3Vic2NyaWJlcnMtb24tY2hhbmdlPgogICAgICAgICA8ZGM6Zm9ybWF0PmltYWdlL3N2Zyt4bWw8L2RjOmZvcm1hdD4KICAgICAgICAgPGRjOm1vZGlmaWVkPjIwMjQtMTAtMDJUMTk6Mzk6NTUuNjUwWjwvZGM6bW9kaWZpZWQ+CiAgICAgICAgIDxkYzp0aXRsZT4KICAgICAgICAgICAgPHJkZjpBbHQ+CiAgICAgICAgICAgICAgIDxyZGY6bGkgeG1sOmxhbmc9IngtZGVmYXVsdCI+TG9nby1SZWRfSGF0LU9wZW5fSW5ub3ZhdGlvbl9MYWJzLUEtU3RhbmRhcmQtUkdCPC9yZGY6bGk+CiAgICAgICAgICAgIDwvcmRmOkFsdD4KICAgICAgICAgPC9kYzp0aXRsZT4KICAgICAgICAgPHhtcFJpZ2h0czpVc2FnZVRlcm1zPgogICAgICAgICAgICA8cmRmOkFsdD4KICAgICAgICAgICAgICAgPHJkZjpsaSB4bWw6bGFuZz0ieC1kZWZhdWx0Ij5XZSBvbmx5IGNyZWF0ZSBsb2dvcyBmb3IgcHJvZHVjdHMsIG5vdCBmb3IgY29tcG9uZW50cywgZmVhdHVyZXMsIHBsdWctaW5zLCBvciBvcGVyYXRvcnMuIFdoZW4gcmVmZXJyaW5nIHRvIHNvbWV0aGluZyB0aGF0J3Mgbm90IGEgcHJvZHVjdCwgdHlwZSBvdXQgdGhlIG5hbWUgaW4gb3VyIGZvbnQgaW5zdGVhZC4mI3hBOyYjeEE7TGVhcm4gbW9yZSBhYm91dCBwcm9kdWN0IGxvZ29zLjwvcmRmOmxpPgogICAgICAgICAgICA8L3JkZjpBbHQ+CiAgICAgICAgIDwveG1wUmlnaHRzOlVzYWdlVGVybXM+CiAgICAgIDwvcmRmOkRlc2NyaXB0aW9uPgogICA8L3JkZjpSREY+CjwveDp4bXBtZXRhPgogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKICAgICAgICAgICAgICAgICAgICAgICAgICAgCjw/eHBhY2tldCBlbmQ9InciPz48L21ldGFkYXRhPgo8cGF0aCBkPSJNMjYzLjM5LDIyMC42OGMtMjEuMjEsMC0zNy44Ni0xNi41My0zNy44Ni0zNy41NHMxNi42NS0zNy41NSwzNy44Ni0zNy41NSwzOCwxNi41NCwzOCwzNy41NVMyODQuNjEsMjIwLjY4LDI2My4zOSwyMjAuNjhabTAtNjVjLTE1LjA4LDAtMjYuNzMsMTEuODYtMjYuNzMsMjcuNDZzMTEuNjUsMjcuNDUsMjYuNzMsMjcuNDUsMjYuODMtMTIsMjYuODMtMjcuNDVTMjc4LjU4LDE1NS42OCwyNjMuMzksMTU1LjY4WiIvPjxwYXRoIGQ9Ik0zMTEuNzUsMTY2LjZoMTAuM3Y1LjFhMjQuMTIsMjQuMTIsMCwwLDEsMTYuMjItNS45M2MxNSwwLDI2LjczLDEyLDI2LjczLDI3LjI1cy0xMS43NSwyNy4zNS0yNi45NCwyNy4zNWEyNi43MiwyNi43MiwwLDAsMS0xNS45MS01LjJ2MjUuOWgtMTAuNFptMTAuNCwxNC41NnYyMy45MmMzLjMzLDMuODUsOC44NCw2LjI0LDE0Ljc3LDYuMjQsMTAuMTksMCwxNy44OS03LjgsMTcuODktMTguMnMtNy44LTE4LjMtMTcuODktMTguM0MzMzAuODksMTc0LjgyLDMyNS41OCwxNzcuMTEsMzIyLjE1LDE4MS4xNloiLz48cGF0aCBkPSJNNDAwLjQ2LDIyMC40N2MtMTUuNiwwLTI3Ljc3LTEyLTI3Ljc3LTI3LjQ1LDAtMTUuMjksMTEuNjUtMjcuMjUsMjYuNTItMjcuMjUsMTQuNTYsMCwyNS41OSwxMi4wNiwyNS41OSwyNy42NnYzSDM4M2ExNy44NSwxNy44NSwwLDAsMCwxNy44OSwxNS4xOEEyMC41MSwyMC41MSwwLDAsMCw0MTQuMjksMjA3bDYuNjYsNi41NkEzMS41OSwzMS41OSwwLDAsMSw0MDAuNDYsMjIwLjQ3Wm0tMTcuMzctMzEuODJINDE0LjVjLTEuNTYtOC4xMS03LjgtMTQuMTUtMTUuNDktMTQuMTVDMzkxLDE3NC41LDM4NC42NSwxODAuMjMsMzgzLjA5LDE4OC42NVoiLz48cGF0aCBkPSJNNDM0LjY4LDE2Ni42aDEwLjR2NS4zQTIxLjgsMjEuOCwwLDAsMSw0NjEsMTY1LjU2YzEyLjE3LDAsMjAuNyw4LjQyLDIwLjcsMjAuN3YzMy4yOGgtMTAuNFYxODhjMC04LjMyLTUuMS0xMy40Mi0xMy4xMS0xMy40MmExNSwxNSwwLDAsMC0xMy4xLDYuODZ2MzguMDdoLTEwLjRaIi8+PHBhdGggZD0iTTUxNi42MywxNDYuNzRoMTAuOTJ2NzIuOEg1MTYuNjNaIi8+PHBhdGggZD0iTTU0MS4xNywxNjYuNmgxMC40djUuM2EyMS44LDIxLjgsMCwwLDEsMTUuOTEtNi4zNGMxMi4xNywwLDIwLjcsOC40MiwyMC43LDIwLjd2MzMuMjhoLTEwLjRWMTg4YzAtOC4zMi01LjEtMTMuNDItMTMuMTEtMTMuNDJhMTUsMTUsMCwwLDAtMTMuMSw2Ljg2djM4LjA3aC0xMC40WiIvPjxwYXRoIGQ9Ik02MDAuMTQsMTY2LjZoMTAuNHY1LjNhMjEuNzgsMjEuNzgsMCwwLDEsMTUuOTEtNi4zNGMxMi4xNywwLDIwLjcsOC40MiwyMC43LDIwLjd2MzMuMjhoLTEwLjRWMTg4YzAtOC4zMi01LjEtMTMuNDItMTMuMTEtMTMuNDJhMTUsMTUsMCwwLDAtMTMuMSw2Ljg2djM4LjA3aC0xMC40WiIvPjxwYXRoIGQ9Ik02ODQuMjcsMTY1LjU2QTI3LjUxLDI3LjUxLDAsMSwxLDY1Ni43MSwxOTMsMjcuMTgsMjcuMTgsMCwwLDEsNjg0LjI3LDE2NS41NlpNNzAxLjU0LDE5M2MwLTEwLjMtNy43LTE4LjMxLTE3LjI3LTE4LjMxcy0xNy4zNyw4LTE3LjM3LDE4LjMxLDcuNiwxOC40MSwxNy4zNywxOC40MUM2OTMuODQsMjExLjQzLDcwMS41NCwyMDMuMzEsNzAxLjU0LDE5M1oiLz48cGF0aCBkPSJNNzEzLjcsMTY2LjZoMTEuNDRsMTYuNTQsMzkuNjMsMTYuNTQtMzkuNjNoMTEuMTJsLTIyLjg4LDUyLjk0aC05Ljg4WiIvPjxwYXRoIGQ9Ik03NzMuMDksMjA0LjM1YzAtMTAsOC4xMS0xNi4xMiwyMS40Mi0xNi4xMkEzNy4yMywzNy4yMywwLDAsMSw4MDksMTkxLjE1di01LjYyYzAtNy40OS00LjQ3LTExLjIzLTEyLjktMTEuMjMtNC44OSwwLTkuODgsMS4zNS0xNi40Myw0LjQ3bC0zLjg1LTcuOGM3LjktMy43NSwxNC43Ny01LjQxLDIxLjc0LTUuNDEsMTMuNzMsMCwyMS42Myw2Ljc2LDIxLjYzLDE4LjkzdjM1SDgwOVYyMTVhMjUuMSwyNS4xLDAsMCwxLTE2LjQ0LDUuNTFDNzgxLDIyMC40Nyw3NzMuMDksMjEzLjkyLDc3My4wOSwyMDQuMzVabTIxLjg0LDguNDNhMjAuNDEsMjAuNDEsMCwwLDAsMTQtNXYtOS4xNmEyNy41NSwyNy41NSwwLDAsMC0xMy42My0zLjIyYy03LjU5LDAtMTIuMjcsMy40My0xMi4yNyw4Ljc0Qzc4My4wNywyMDkuMjQsNzg3Ljg1LDIxMi43OCw3OTQuOTMsMjEyLjc4WiIvPjxwYXRoIGQ9Ik04MzUuOSwxNzUuMzRIODI0LjY3VjE2Ni42SDgzNS45VjE1My4wOGwxMC4zLTIuNXYxNmgxNS42djguNzRIODQ2LjJWMjA0YzAsNS40MSwyLjE4LDcuMzksNy44LDcuMzlhMjAuNTUsMjAuNTUsMCwwLDAsNy41OS0xLjI1djguNzNhMzQuMzIsMzQuMzIsMCwwLDEtOS44OCwxLjU2Yy0xMC4yOSwwLTE1LjgxLTQuODgtMTUuODEtMTRaIi8+PHBhdGggZD0iTTg2OC4zNSwxNTEuNjJhNi4zOSw2LjM5LDAsMCwxLDYuMzQtNi40NCw2LjQ1LDYuNDUsMCwxLDEsMCwxMi44OUE2LjM5LDYuMzksMCwwLDEsODY4LjM1LDE1MS42MlptMTEuNTQsNjcuOTJoLTEwLjRWMTY2LjZoMTAuNFoiLz48cGF0aCBkPSJNOTE3LjMzLDE2NS41NkEyNy41MSwyNy41MSwwLDEsMSw4ODkuNzcsMTkzLDI3LjE3LDI3LjE3LDAsMCwxLDkxNy4zMywxNjUuNTZaTTkzNC42LDE5M2MwLTEwLjMtNy43LTE4LjMxLTE3LjI3LTE4LjMxUzkwMCwxODIuNzIsOTAwLDE5M3M3LjU5LDE4LjQxLDE3LjM2LDE4LjQxQzkyNi45LDIxMS40Myw5MzQuNiwyMDMuMzEsOTM0LjYsMTkzWiIvPjxwYXRoIGQ9Ik05NTQuNjcsMTY2LjZoMTAuNHY1LjNBMjEuOCwyMS44LDAsMCwxLDk4MSwxNjUuNTZjMTIuMTcsMCwyMC43LDguNDIsMjAuNywyMC43djMzLjI4aC0xMC40VjE4OGMwLTguMzItNS4xLTEzLjQyLTEzLjExLTEzLjQyYTE1LDE1LDAsMCwwLTEzLjEsNi44NnYzOC4wN2gtMTAuNFoiLz48cGF0aCBkPSJNMTAzNi42MiwxNDYuNzRoMTAuOTJ2NjMuMTNoNDEuOTF2OS42N2gtNTIuODNaIi8+PHBhdGggZD0iTTEwOTYuNTIsMjA0LjM1YzAtMTAsOC4xMS0xNi4xMiwyMS40My0xNi4xMmEzNy4yMiwzNy4yMiwwLDAsMSwxNC40NSwyLjkydi01LjYyYzAtNy40OS00LjQ3LTExLjIzLTEyLjg5LTExLjIzLTQuODksMC05Ljg4LDEuMzUtMTYuNDQsNC40N2wtMy44NC03LjhjNy45LTMuNzUsMTQuNzctNS40MSwyMS43My01LjQxLDEzLjczLDAsMjEuNjQsNi43NiwyMS42NCwxOC45M3YzNWgtMTAuMlYyMTVhMjUuMDcsMjUuMDcsMCwwLDEtMTYuNDMsNS41MUMxMTA0LjQzLDIyMC40NywxMDk2LjUyLDIxMy45MiwxMDk2LjUyLDIwNC4zNVptMjEuODQsOC40M2EyMC4zOCwyMC4zOCwwLDAsMCwxNC01di05LjE2YTI3LjUxLDI3LjUxLDAsMCwwLTEzLjYyLTMuMjJjLTcuNTksMC0xMi4yNywzLjQzLTEyLjI3LDguNzRDMTEwNi41MSwyMDkuMjQsMTExMS4yOSwyMTIuNzgsMTExOC4zNiwyMTIuNzhaIi8+PHBhdGggZD0iTTExODAuODcsMjIwLjM3YTI2LjQ4LDI2LjQ4LDAsMCwxLTE2LTUuM3Y0LjQ3aC0xMC4zdi03Mi44bDEwLjQtMi4yOXYyNy4xNGEyNC41NiwyNC41NiwwLDAsMSwxNi4xMy01LjgyYzE1LDAsMjYuNzIsMTIsMjYuNzIsMjcuMjVTMTE5Ni4wNSwyMjAuMzcsMTE4MC44NywyMjAuMzdaTTExNjUsMTgxLjE2djIzLjkyYzMuMzMsMy44NSw4Ljg1LDYuMjQsMTQuNzcsNi4yNCwxMC4yLDAsMTcuODktNy44LDE3Ljg5LTE4LjJzLTcuOC0xOC4zLTE3Ljg5LTE4LjNDMTE3My42OSwxNzQuODIsMTE2OC4zOSwxNzcuMTEsMTE2NSwxODEuMTZaIi8+PHBhdGggZD0iTTEyMTguMzEsMjA1LjgxYzUuNTEsNC4zNywxMS4zMyw2LjY2LDE3LjI2LDYuNjYsNy40OSwwLDEyLjY5LTMuMjMsMTIuNjktNy45MSwwLTMuNzQtMi43MS01LjkzLTguNTMtNi43NmwtOS41Ny0xLjM1Yy0xMC41LTEuNTYtMTUuODEtNi40NS0xNS44MS0xNC42NiwwLTkuNTcsOC4zMi0xNiwyMC43LTE2YTM2LjI4LDM2LjI4LDAsMCwxLDIxLjMyLDYuNzZsLTUuMyw2Ljg2Yy01LjgzLTMuODQtMTEuMTMtNS41MS0xNi43NS01LjUxLTYuMzQsMC0xMC42MSwyLjkxLTEwLjYxLDcuMTgsMCwzLjg1LDIuNSw1LjcyLDguNzQsNi42NWw5LjU3LDEuMzZjMTAuNSwxLjU2LDE2LDYuNTUsMTYsMTQuNzYsMCw5LjQ3LTkuNTYsMTYuNjQtMjIuMTUsMTYuNjQtOS4xNSwwLTE3LjM3LTIuNy0yMy4xOS03LjhaIi8+PHBhdGggY2xhc3M9ImNscy0xIiBkPSJNMTI5LDg1YzEyLjUxLDAsMzAuNjEtMi41OCwzMC42MS0xNy40NmExNCwxNCwwLDAsMC0uMzEtMy40MmwtNy40NS0zMi4zNmMtMS43Mi03LjEyLTMuMjMtMTAuMzUtMTUuNzMtMTYuNkMxMjYuMzksMTAuMTksMTA1LjI2LDIsOTksMmMtNS44MiwwLTcuNTUsNy41NC0xNC40NSw3LjU0LTYuNjgsMC0xMS42NC01LjYtMTcuODktNS42LTYsMC05LjkxLDQuMDktMTIuOTMsMTIuNSwwLDAtOC40MSwyMy43Mi05LjQ5LDI3LjE2QTYuNDMsNi40MywwLDAsMCw0NCw0NS41NEM0NCw1NC43Niw4MC4zMyw4NSwxMjksODVtMzIuNTUtMTEuNDJjMS43Myw4LjE5LDEuNzMsOS4wNSwxLjczLDEwLjEzLDAsMTQtMTUuNzQsMjEuNzctMzYuNDMsMjEuNzdDODAsMTA1LjQ3LDM5LjA4LDc4LjEsMzkuMDgsNjBhMTguNDUsMTguNDUsMCwwLDEsMS41MS03LjMzQzIzLjc3LDUzLjUyLDIsNTYuNTQsMiw3NS43MiwyLDEwNy4yLDc2LjU5LDE0NiwxMzUuNjUsMTQ2YzQ1LjI4LDAsNTYuNy0yMC40OCw1Ni43LTM2LjY1LDAtMTIuNzItMTEtMjcuMTYtMzAuODMtMzUuNzgiLz48cGF0aCBkPSJNMTYxLjUyLDczLjU3YzEuNzMsOC4xOSwxLjczLDkuMDUsMS43MywxMC4xMywwLDE0LTE1Ljc0LDIxLjc3LTM2LjQzLDIxLjc3QzgwLDEwNS40NywzOS4wOCw3OC4xLDM5LjA4LDYwYTE4LjQ1LDE4LjQ1LDAsMCwxLDEuNTEtNy4zM2wzLjY2LTkuMDZBNi40Myw2LjQzLDAsMCwwLDQ0LDQ1LjU0QzQ0LDU0Ljc2LDgwLjMzLDg1LDEyOSw4NWMxMi41MSwwLDMwLjYxLTIuNTgsMzAuNjEtMTcuNDZhMTQsMTQsMCwwLDAtLjMxLTMuNDJaIi8+PHBhdGggZD0iTTU4MS4yNCw5NC4zYzAsMTEuODksNy4xNSwxNy42NywyMC4xOSwxNy42N2E1Mi4xMSw1Mi4xMSwwLDAsMCwxMS44OS0xLjY4Vjk2LjUxYTI0Ljg0LDI0Ljg0LDAsMCwxLTcuNjgsMS4xNmMtNS4zNywwLTcuMzYtMS42OC03LjM2LTYuNzNWNjkuOGgxNS41NlY1NS42SDU5OC4yOHYtMThsLTE3LDMuNjhWNTUuNkg1NzBWNjkuOGgxMS4yNVptLTUzLC4zMmMwLTMuNjgsMy42OS01LjQ3LDkuMjYtNS40N2E0My4xMiw0My4xMiwwLDAsMSwxMC4xLDEuMjZ2Ny4xNUEyMS41MSwyMS41MSwwLDAsMSw1MzcsMTAwLjE5Yy01LjQ2LDAtOC43My0yLjEtOC43My01LjU3bTUuMiwxNy41NmM2LDAsMTAuODQtMS4yNiwxNS4zNi00LjMxdjMuMzdoMTYuODJWNzUuNThjMC0xMy41Ni05LjE0LTIxLTI0LjM5LTIxLTguNTIsMC0xNi45NCwyLTI2LDYuMWw2LjEsMTIuNTJjNi41Mi0yLjc0LDEyLTQuNDIsMTYuODMtNC40Miw3LDAsMTAuNjIsMi43MywxMC42Miw4LjMxdjIuNzNhNDkuNTMsNDkuNTMsMCwwLDAtMTIuNjItMS41OGMtMTQuMzEsMC0yMi45Myw2LTIyLjkzLDE2LjczLDAsOS43OCw3Ljc4LDE3LjI0LDIwLjE5LDE3LjI0bS05Mi40NC0uOTRoMTguMDlWODIuNDJoMzAuMjl2MjguODJoMTguMDlWMzcuNjJINDg5LjQzVjY1LjkxSDQ1OS4xNFYzNy42Mkg0NDEuMDVaTTM3Mi4xMiw4My4zN2MwLTgsNi4zMS0xNC4xLDE0LjYyLTE0LjFhMTcuMjIsMTcuMjIsMCwwLDEsMTEuNzgsNC4zMlY5M2ExNi4zNiwxNi4zNiwwLDAsMS0xMS43OCw0LjQyYy04LjIsMC0xNC42Mi02LjEtMTQuNjItMTQuMDltMjYuNjEsMjcuODdoMTYuODNWMzMuOTRsLTE3LDMuNjhWNTguNTVhMjguMywyOC4zLDAsMCwwLTE0LjItMy42OGMtMTYuMTksMC0yOC45MiwxMi41MS0yOC45MiwyOC41QTI4LjI1LDI4LjI1LDAsMCwwLDM4My44LDExMmEyNS4xMiwyNS4xMiwwLDAsMCwxNC45My00LjgzWm0tNzcuMTktNDIuN2M1LjM2LDAsOS44OCwzLjQ3LDExLjY3LDguODNIMzEwYzEuNjgtNS41Nyw1Ljg5LTguODMsMTEuNTctOC44M00yOTIuODMsODMuNDdjMCwxNi4yLDEzLjI1LDI4LjgyLDMwLjI4LDI4LjgyLDkuMzYsMCwxNi4yLTIuNTMsMjMuMjUtOC40MmwtMTEuMjYtMTBjLTIuNjMsMi43NC02LjUyLDQuMjEtMTEuMTQsNC4yMWExNC4zOSwxNC4zOSwwLDAsMS0xMy42OC04LjgzaDM5LjY1Vjg1LjA1YzAtMTcuNjctMTEuODgtMzAuMzktMjguMDgtMzAuMzlhMjguNTcsMjguNTcsMCwwLDAtMjksMjguODFNMjYzLjQ5LDUzLjA4YzYsMCw5LjM2LDMuNzgsOS4zNiw4LjMxcy0zLjM3LDguMzEtOS4zNiw4LjMxSDI0NS42MVY1My4wOFptLTM2LDU4LjE2aDE4LjA5Vjg0LjQyaDEzLjc3bDEzLjg5LDI2LjgyaDIwLjE5bC0xNi4yLTI5LjQ1YTIyLjI3LDIyLjI3LDAsMCwwLDEzLjg4LTIwLjcyYzAtMTMuMjUtMTAuNDEtMjMuNDUtMjYtMjMuNDVIMjI3LjUyWiIvPjwvc3ZnPg==');
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: right center;
+            pointer-events: none;
+            z-index: 5;
+        }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(30px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        /* ── SLIDE HEADER ───────────────────────────────────── */
+        .slide-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 2px solid var(--rh-red);
+            padding-bottom: 8px;
+            margin-bottom: 1px;
+            width: 100%;
+        }
+
+        .slide-header .rh-logo {
+            height: 45px;
+            width: auto;
+            flex-shrink: 0;
+        }
+
+        .slide-header h1 {
+            font-size: 1.6em;
+            color: var(--rh-red);
+            margin: 0;
+            text-align: right;
+            flex-grow: 1;
+        }
+
+        /* ── TITLE SLIDE ─────────────────────────────────────── */
+        .title-slide {
+            background: linear-gradient(135deg, #EE0000 0%, #CC0000 100%) !important;
+            color: white !important;
+            border: none !important;
+            padding: 60px !important;
+            flex-direction: column !important;
+            justify-content: space-between !important;
+        }
+
+        .title-slide.active { display: flex !important; }
+        .title-slide::after { display: none !important; }
+
+        .title-slide .confidential {
+            position: absolute;
+            top: 20px;
+            right: 24px;
+            font-size: 0.7em;
+            color: rgba(255,255,255,0.7);
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+        }
+
+        .title-slide .title-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .title-slide .main-title {
+            font-size: 3.5em !important;
+            font-weight: 300 !important;
+            line-height: 1.1 !important;
+            margin: 0 !important;
+            color: white !important;
+            text-align: center;
+        }
+
+        .title-slide .subtitle {
+            font-size: 1.8em !important;
+            font-weight: 300 !important;
+            color: rgba(255,255,255,0.9) !important;
+            text-align: center;
+            margin: 1rem 0 !important;
+        }
+
+        .title-slide .event-info {
+            font-size: 1.1em;
+            color: rgba(255,255,255,0.8);
+            text-align: center;
+            margin-top: 0.5rem;
+        }
+
+        .title-slide .presenters {
+            display: flex;
+            justify-content: space-between;
+            margin-top: auto;
+            padding-top: 2rem;
+        }
+
+        .title-slide .presenter { color: white; }
+        .title-slide .presenter-name { font-size: 1.2em; font-weight: 500; margin-bottom: 5px; }
+        .title-slide .presenter-title { font-size: 1em; color: rgba(255,255,255,0.85); }
+
+        /* ── METRIC GRID ─────────────────────────────────────── */
+        .metric-grid {
+            display: flex;
+            gap: 15px;
+            margin: 10px 0;
+            justify-content: center;
+            width: 100%;
+        }
+
+        .metric-card {
+            background-color: var(--rh-gray-light);
+            padding: 15px;
+            border-left: 5px solid var(--rh-red);
+            border-radius: 4px;
+            flex: 1;
+            text-align: center;
+            min-height: 60px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .metric-card .value {
+            font-size: 2.2em;
+            font-weight: 700;
+            color: var(--rh-red);
+            line-height: 1;
+            margin-bottom: 5px;
+        }
+
+        .metric-card .label {
+            font-size: 0.75em;
+            font-weight: 700;
+            line-height: 1.2;
+        }
+
+        /* ── BAR CHART ───────────────────────────────────────── */
+        .bar-chart {
+            list-style: none;
+            padding: 0;
+            margin: 10px 0;
+            width: 100%;
+        }
+
+        .bar-chart .bar-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .bar-chart .bar-label {
+            width: 30%;
+            font-weight: 700;
+            padding-right: 20px;
+            flex-shrink: 0;
+            text-align: right;
+            font-size: 0.95em;
+        }
+
+        .bar-chart .bar-wrapper {
+            width: 70%;
+            background-color: #e0e0e0;
+            border-radius: 4px;
+            height: 30px;
+        }
+
+        .bar-chart .bar {
+            background-color: var(--rh-red);
+            height: 100%;
+            line-height: 30px;
+            color: white;
+            text-align: right;
+            font-weight: 700;
+            font-size: 0.9em;
+            padding-right: 12px;
+            border-radius: 4px;
+            white-space: nowrap;
+            box-sizing: border-box;
+        }
+
+        .bar-chart .bar.secondary  { background-color: var(--rh-gray-dark); }
+        .bar-chart .bar.tertiary   { background-color: #8a8a8a; }
+        .bar-chart .bar.green      { background-color: #3B6D11; }
+
+        /* ── QUOTE BLOCK ─────────────────────────────────────── */
+        .quote-grid {
+            columns: 2 250px;
+            column-gap: 30px;
+            margin-top: 10px;
+            text-align: left;
+        }
+
+        .quote {
+            background-color: var(--rh-gray-light);
+            border-left: 3px solid var(--rh-red);
+            padding: 12px 15px;
+            margin-bottom: 12px;
+            font-style: italic;
+            font-size: 0.95em;
+            break-inside: avoid-column;
+            line-height: 1.3;
+            border-radius: 0 6px 6px 0;
+        }
+
+        /* ── CHALLENGE LIST ──────────────────────────────────── */
+        .challenge-list {
+            list-style: none;
+            padding: 0;
+            margin: 15px 0;
+        }
+
+        .challenge-list li {
+            background: var(--rh-gray-light);
+            border-left: 4px solid var(--rh-red);
+            padding: 12px 18px;
+            margin-bottom: 10px;
+            border-radius: 0 6px 6px 0;
+            font-size: 0.95em;
+            line-height: 1.5;
+        }
+
+        .challenge-list li strong { color: var(--rh-red); }
+
+        /* ── RECOMMENDATION CARD ─────────────────────────────── */
+        .rec-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 14px;
+            margin-top: 10px;
+        }
+
+        .rec-card {
+            background: var(--rh-gray-light);
+            border-left: 5px solid var(--rh-red);
+            border-radius: 0 6px 6px 0;
+            padding: 14px 18px;
+        }
+
+        .rec-card .rec-title  { font-weight: 700; font-size: 0.95em; color: var(--rh-red); margin-bottom: 4px; }
+        .rec-card .rec-detail { font-size: 0.85em; color: #4d4d4d; line-height: 1.4; }
+        .rec-card .rec-action { font-size: 0.8em; font-weight: 700; color: var(--rh-black); margin-top: 6px; }
+
+        /* ── STOP / STEP CARDS ───────────────────────────────── */
+        .stops-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+            margin: 15px 0;
+            width: 100%;
+        }
+
+        .stop-card {
+            background: var(--rh-gray-light);
+            border-top: 4px solid var(--rh-red);
+            border-radius: 0 0 6px 6px;
+            padding: 15px;
+            text-align: center;
+        }
+
+        .stop-card .stop-number { font-size: 1.8em; font-weight: 700; color: var(--rh-red); margin-bottom: 4px; }
+        .stop-card .stop-title  { font-size: 0.85em; font-weight: 700; margin-bottom: 6px; }
+        .stop-card .stop-desc   { font-size: 0.75em; color: var(--rh-gray-dark); line-height: 1.3; }
+
+        /* ── TECH TILE GRID ──────────────────────────────────── */
+        .tech-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 14px;
+            margin-top: 14px;
+        }
+
+        .tech-tile {
+            background: var(--rh-gray-light);
+            border-radius: 6px;
+            padding: 14px 16px;
+            border-top: 4px solid var(--rh-red);
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .tech-tile .tech-layer  { font-size: 0.7em; text-transform: uppercase; letter-spacing: 0.08em; color: var(--rh-gray-dark); font-weight: 600; }
+        .tech-tile .tech-name   { font-size: 1.05em; font-weight: 700; color: var(--rh-red); line-height: 1.2; }
+        .tech-tile .tech-detail { font-size: 0.8em; color: #4d4d4d; line-height: 1.35; }
+
+        /* ── DATA TABLE ──────────────────────────────────────── */
+        .table-container { margin-top: 10px; width: 100%; overflow: visible; }
+
+        .leads-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85em;
+            table-layout: fixed;
+        }
+
+        .leads-table th,
+        .leads-table td {
+            padding: 6px 8px;
+            text-align: left;
+            border: 1px solid #ddd;
+            word-wrap: break-word;
+            vertical-align: top;
+        }
+
+        .leads-table th { background-color: var(--rh-gray-light); font-weight: 700; }
+        .leads-table tr:nth-child(even) { background-color: #f9f9f9; }
+
+        /* ── TWO-COLUMN LAYOUT ───────────────────────────────── */
+        .two-col      { display: flex; gap: 30px; margin-top: 10px; width: 100%; }
+        .two-col .col { flex: 1; }
+
+        /* ── DARK CONTRAST CARD ──────────────────────────────── */
+        /* Add class="dark-panel" alongside inline styles for print overrides.
+           See references/html-elements/dark-contrast-panel.yaml for full pattern. */
+        .dark-panel {
+            background: #1a1a1a;
+            border-radius: 6px;
+            border-top: 4px solid var(--rh-red);
+            color: white;
+        }
+
+        /* ── NAVIGATION BAR ──────────────────────────────────── */
+        .navigation {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+            background: #141917;
+            padding: 12px 25px;
+            border-radius: 50px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+            z-index: 1000;
+        }
+
+        .nav-btn {
+            background: var(--rh-red);
+            color: white;
+            border: none;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 1.2rem;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .nav-btn:hover:not(:disabled) { background: var(--rh-red-dark); transform: scale(1.1); }
+        .nav-btn:disabled { background: #6a6e73; cursor: not-allowed; opacity: 0.5; }
+
+        .slide-counter { color: white; font-weight: 500; font-size: 0.95rem; padding: 0 10px; }
+
+        /* ── PROGRESS BAR ────────────────────────────────────── */
+        .progress-bar {
+            position: fixed;
+            top: 0; left: 0;
+            height: 4px;
+            background: var(--rh-red);
+            transition: width 0.3s ease;
+            z-index: 1001;
+        }
+
+        /* ── RESPONSIVE ──────────────────────────────────────── */
+        @media (max-width: 1024px) {
+            .slide { width: 100%; height: auto; min-height: 400px; padding: 30px; }
+            .metric-grid { flex-direction: column; gap: 10px; }
+            .stops-grid { grid-template-columns: repeat(2, 1fr); }
+            .two-col { flex-direction: column; gap: 15px; }
+        }
+
+        @media (max-width: 768px) {
+            .slide { padding: 20px; font-size: 14px; }
+            .stops-grid { grid-template-columns: 1fr; }
+            .tech-grid { grid-template-columns: 1fr 1fr; }
+            .rec-grid { grid-template-columns: 1fr; }
+        }
+
+
+        /* ── FAILOVER CANVAS DEMO ─────────────────────────────── */
+        .failover-wrap {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            width: 100%;
+            flex: 1;
+            min-height: 0;
+        }
+        .failover-controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .failover-btn {
+            font-family: 'Red Hat Text', sans-serif;
+            font-size: 0.9em;
+            font-weight: 700;
+            border: none;
+            border-radius: 4px;
+            padding: 10px 16px;
+            cursor: pointer;
+            background: #EE0000;
+            color: #fff;
+        }
+        .failover-btn.secondary { background: #151515; }
+        .failover-btn.danger { background: #f0561d; }
+        .failover-btn:hover { filter: brightness(0.92); }
+        .failover-status {
+            font-family: 'Red Hat Mono', monospace;
+            font-size: 0.85em;
+            color: #595959;
+        }
+        .failover-status strong { color: #151515; }
+        #failoverCanvas {
+            width: 100%;
+            flex: 1;
+            min-height: 420px;
+            max-height: 520px;
+            background: #f5f5f5;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            display: block;
+        }
+        .failover-caption {
+            font-size: 0.8em;
+            color: #595959;
+            margin: 0;
+        }
+        @media print {
+            .failover-controls { display: none !important; }
+            #failoverCanvas { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+        }
+
+        /* ── PRINT ───────────────────────────────────────────── */
+        @media print {
+            @page { margin: 0; size: A4 landscape; }
+            body { margin: 0; padding: 0; background: white; overflow: visible !important; }
+            .navigation, .progress-bar { display: none !important; }
+            .slide {
+                display: flex !important;
+                page-break-after: always;
+                break-after: page;
+                width: 100vw; height: 100vh;
+                max-width: 100vw; max-height: 100vh;
+                margin: 0; padding: 40px 60px !important;
+                box-shadow: none; background: white;
+            }
+            .slide:last-child { page-break-after: avoid; break-after: avoid; }
+            .title-slide {
+                background: #EE0000 !important;
+                print-color-adjust: exact;
+                -webkit-print-color-adjust: exact;
+                display: flex !important;
+                flex-direction: column !important;
+                justify-content: space-between !important;
+                padding: 60px !important;
+            }
+            .title-slide .presenter { color: white !important; }
+            /* Force colours for print */
+            .metric-card { border-left: 5px solid #EE0000 !important; background-color: #f5f5f5 !important; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+            .metric-card .value { color: #EE0000 !important; }
+            .bar-chart .bar { background-color: #EE0000 !important; print-color-adjust: exact; -webkit-print-color-adjust: exact; color: white !important; }
+            .bar-chart .bar.secondary { background-color: #595959 !important; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+            .bar-chart .bar-wrapper { background-color: #e0e0e0 !important; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+            .quote { border-left: 3px solid #EE0000 !important; background-color: #f5f5f5 !important; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+            .stop-card { border-top: 4px solid #EE0000 !important; background-color: #f5f5f5 !important; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+            .challenge-list li { border-left: 4px solid #EE0000 !important; background-color: #f5f5f5 !important; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+            .rec-card { border-left: 5px solid #EE0000 !important; background-color: #f5f5f5 !important; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+            .rec-card .rec-title { color: #EE0000 !important; }
+            .tech-tile { border-top: 4px solid #EE0000 !important; background-color: #f5f5f5 !important; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+            .tech-tile .tech-name { color: #EE0000 !important; }
+            .stops-grid { grid-template-columns: repeat(4, 1fr) !important; }
+            .metric-grid { flex-direction: row !important; flex-wrap: wrap !important; }
+            .rec-grid { grid-template-columns: repeat(2, 1fr) !important; }
+            .slide:not(.title-slide)::after {
+                bottom: 16px; right: 20px;
+                width: 260px; height: 50px;
+                print-color-adjust: exact;
+                -webkit-print-color-adjust: exact;
+            }
+            /* Dark contrast panels → light card for print */
+            .dark-panel {
+                background: #f5f5f5 !important;
+                color: #333333 !important;
+                border-top: none !important;
+                border-left: 4px solid #EE0000 !important;
+                border-radius: 0 6px 6px 0 !important;
+                print-color-adjust: exact;
+                -webkit-print-color-adjust: exact;
+            }
+            .dark-panel * { color: #333333 !important; }
+            .dark-panel [style*="color: var(--rh-red)"],
+            .dark-panel [style*="color:#EE0000"] { color: #EE0000 !important; }
+        }
+    
+    </style>
+</head>
+<body>
+    <div class="progress-bar" id="progressBar"></div>
+    <div class="presentation-container">
+        <div class="deck-container">
+
+            <div class="slide active title-slide">
+                <div class="title-content">
+                    <h1 class="main-title">RHBK multi-cluster v2 PoC</h1>
+                    <p class="subtitle">Stateless Keycloak across two CRC sites</p>
+                    <p class="event-info">Dual CRC · Podman Postgres · HAProxy · recovery SPA · Aug 2026</p>
+                </div>
+                <div class="presenters">
+                    <div class="presenter">
+                        <div class="presenter-name">Jerczey Godoy</div>
+                        <div class="presenter-title">Red Hat</div>
+                    </div>
+                    <div class="presenter">
+                        <div class="presenter-name">Lab topology</div>
+                        <div class="presenter-title">Site A Linux · Site B Windows</div>
+                    </div>
+                </div>
+            </div>
+            <div class="slide">
+                <div class="slide-header">
+                <svg class="rh-logo" viewBox="0 0 613 145" xmlns="http://www.w3.org/2000/svg">
+                    <path fill="#e00" d="M127.47,83.49c12.51,0,30.61-2.58,30.61-17.46a14,14,0,0,0-.31-3.42l-7.45-32.36c-1.72-7.12-3.23-10.35-15.73-16.6C124.89,8.69,103.76.5,97.51.5,91.69.5,90,8,83.06,8c-6.68,0-11.64-5.6-17.89-5.6-6,0-9.91,4.09-12.93,12.5,0,0-8.41,23.72-9.49,27.16A6.43,6.43,0,0,0,42.53,44c0,9.22,36.3,39.45,84.94,39.45M160,72.07c1.73,8.19,1.73,9.05,1.73,10.13,0,14-15.74,21.77-36.43,21.77C78.54,104,37.58,76.6,37.58,58.49a18.45,18.45,0,0,1,1.51-7.33C22.27,52,.5,55,.5,74.22c0,31.48,74.59,70.28,133.65,70.28,45.28,0,56.7-20.48,56.7-36.65,0-12.72-11-27.16-30.83-35.78"/>
+                    <path d="M579.74,92.8c0,11.89,7.15,17.67,20.19,17.67a52.11,52.11,0,0,0,11.89-1.68V95a24.84,24.84,0,0,1-7.68,1.16c-5.37,0-7.36-1.68-7.36-6.73V68.3h15.56V54.1H596.78v-18l-17,3.68V54.1H568.49V68.3h11.25Zm-53,.32c0-3.68,3.69-5.47,9.26-5.47a43.12,43.12,0,0,1,10.1,1.26v7.15a21.51,21.51,0,0,1-10.63,2.63c-5.46,0-8.73-2.1-8.73-5.57m5.2,17.56c6,0,10.84-1.26,15.36-4.31v3.37h16.82V74.08c0-13.56-9.14-21-24.39-21-8.52,0-16.94,2-26,6.1l6.1,12.52c6.52-2.74,12-4.42,16.83-4.42,7,0,10.62,2.73,10.62,8.31v2.73a49.53,49.53,0,0,0-12.62-1.58c-14.31,0-22.93,6-22.93,16.73,0,9.78,7.78,17.24,20.19,17.24m-92.44-.94h18.09V80.92h30.29v28.82H506V36.12H487.93V64.41H457.64V36.12H439.55ZM370.62,81.87c0-8,6.31-14.1,14.62-14.1A17.22,17.22,0,0,1,397,72.09V91.54A16.36,16.36,0,0,1,385.24,96c-8.2,0-14.62-6.1-14.62-14.09m26.61,27.87h16.83V32.44l-17,3.68V57.05a28.3,28.3,0,0,0-14.2-3.68c-16.19,0-28.92,12.51-28.92,28.5a28.25,28.25,0,0,0,28.4,28.6,25.12,25.12,0,0,0,14.93-4.83ZM320,67c5.36,0,9.88,3.47,11.67,8.83H308.47C310.15,70.3,314.36,67,320,67M291.33,82c0,16.2,13.25,28.82,30.28,28.82,9.36,0,16.2-2.53,23.25-8.42l-11.26-10c-2.63,2.74-6.52,4.21-11.14,4.21a14.39,14.39,0,0,1-13.68-8.83h39.65V83.55c0-17.67-11.88-30.39-28.08-30.39a28.57,28.57,0,0,0-29,28.81M262,51.58c6,0,9.36,3.78,9.36,8.31S268,68.2,262,68.2H244.11V51.58Zm-36,58.16h18.09V82.92h13.77l13.89,26.82H292l-16.2-29.45a22.27,22.27,0,0,0,13.88-20.72c0-13.25-10.41-23.45-26-23.45H226Z"/>
+                </svg>
+                <h1>Agenda</h1>
+            </div>
+                <h2>What this deck covers</h2>
+                <ul class="challenge-list">
+                    <li><strong>Problem</strong> — Why multi-site Keycloak used to need stickiness or Infinispan XSite</li>
+                    <li><strong>Architecture</strong> — Shared DB + <code>stateless</code> + one public issuer</li>
+                    <li><strong>Lab build</strong> — Dual CRC, Podman Postgres sync, LAN HAProxy</li>
+                    <li><strong>Failover demo</strong> — Drop Site A, Site B, or both (complete sites failure)</li>
+                    <li><strong>DR questions</strong> — RTO and RPO for IdP failover vs database promote</li>
+                    <li><strong>Takeaways</strong> — What to carry into real deployments</li>
+                </ul>
+            </div>
+            <div class="slide">
+                <div class="slide-header">
+                <svg class="rh-logo" viewBox="0 0 613 145" xmlns="http://www.w3.org/2000/svg">
+                    <path fill="#e00" d="M127.47,83.49c12.51,0,30.61-2.58,30.61-17.46a14,14,0,0,0-.31-3.42l-7.45-32.36c-1.72-7.12-3.23-10.35-15.73-16.6C124.89,8.69,103.76.5,97.51.5,91.69.5,90,8,83.06,8c-6.68,0-11.64-5.6-17.89-5.6-6,0-9.91,4.09-12.93,12.5,0,0-8.41,23.72-9.49,27.16A6.43,6.43,0,0,0,42.53,44c0,9.22,36.3,39.45,84.94,39.45M160,72.07c1.73,8.19,1.73,9.05,1.73,10.13,0,14-15.74,21.77-36.43,21.77C78.54,104,37.58,76.6,37.58,58.49a18.45,18.45,0,0,1,1.51-7.33C22.27,52,.5,55,.5,74.22c0,31.48,74.59,70.28,133.65,70.28,45.28,0,56.7-20.48,56.7-36.65,0-12.72-11-27.16-30.83-35.78"/>
+                    <path d="M579.74,92.8c0,11.89,7.15,17.67,20.19,17.67a52.11,52.11,0,0,0,11.89-1.68V95a24.84,24.84,0,0,1-7.68,1.16c-5.37,0-7.36-1.68-7.36-6.73V68.3h15.56V54.1H596.78v-18l-17,3.68V54.1H568.49V68.3h11.25Zm-53,.32c0-3.68,3.69-5.47,9.26-5.47a43.12,43.12,0,0,1,10.1,1.26v7.15a21.51,21.51,0,0,1-10.63,2.63c-5.46,0-8.73-2.1-8.73-5.57m5.2,17.56c6,0,10.84-1.26,15.36-4.31v3.37h16.82V74.08c0-13.56-9.14-21-24.39-21-8.52,0-16.94,2-26,6.1l6.1,12.52c6.52-2.74,12-4.42,16.83-4.42,7,0,10.62,2.73,10.62,8.31v2.73a49.53,49.53,0,0,0-12.62-1.58c-14.31,0-22.93,6-22.93,16.73,0,9.78,7.78,17.24,20.19,17.24m-92.44-.94h18.09V80.92h30.29v28.82H506V36.12H487.93V64.41H457.64V36.12H439.55ZM370.62,81.87c0-8,6.31-14.1,14.62-14.1A17.22,17.22,0,0,1,397,72.09V91.54A16.36,16.36,0,0,1,385.24,96c-8.2,0-14.62-6.1-14.62-14.09m26.61,27.87h16.83V32.44l-17,3.68V57.05a28.3,28.3,0,0,0-14.2-3.68c-16.19,0-28.92,12.51-28.92,28.5a28.25,28.25,0,0,0,28.4,28.6,25.12,25.12,0,0,0,14.93-4.83ZM320,67c5.36,0,9.88,3.47,11.67,8.83H308.47C310.15,70.3,314.36,67,320,67M291.33,82c0,16.2,13.25,28.82,30.28,28.82,9.36,0,16.2-2.53,23.25-8.42l-11.26-10c-2.63,2.74-6.52,4.21-11.14,4.21a14.39,14.39,0,0,1-13.68-8.83h39.65V83.55c0-17.67-11.88-30.39-28.08-30.39a28.57,28.57,0,0,0-29,28.81M262,51.58c6,0,9.36,3.78,9.36,8.31S268,68.2,262,68.2H244.11V51.58Zm-36,58.16h18.09V82.92h13.77l13.89,26.82H292l-16.2-29.45a22.27,22.27,0,0,0,13.88-20.72c0-13.25-10.41-23.45-26-23.45H226Z"/>
+                </svg>
+                <h1>PoC outcomes</h1>
+            </div>
+                <h2>Verified on the LAN lab (Jul 2026)</h2>
+                <div class="metric-grid">
+                    <div class="metric-card">
+                        <div class="value">2</div>
+                        <div class="label">CRC sites · cluster-a / cluster-b</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="value">26.7</div>
+                        <div class="label">Keycloak with stateless preview</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="value">1</div>
+                        <div class="label">Public issuer · auth.lan.local</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="value">UP</div>
+                        <div class="label">HAProxy /lb-check health signal</div>
+                    </div>
+                </div>
+                <div class="dark-panel" style="margin-top:18px;padding:18px 22px;">
+                    <p style="margin:0;font-size:1.05em;color:#fff;"><strong style="color:#EE0000;">Proven drill:</strong> Site A Keycloak / CRC stopped on Linux — SPA login and token refresh continued via Site B. Issuer stayed <span style="font-family:'Red Hat Mono',monospace;font-size:0.9em;">https://auth.lan.local:8443/realms/poc-realm</span>.</p>
+                </div>
+            </div>
+            <div class="slide">
+                <div class="slide-header">
+                <svg class="rh-logo" viewBox="0 0 613 145" xmlns="http://www.w3.org/2000/svg">
+                    <path fill="#e00" d="M127.47,83.49c12.51,0,30.61-2.58,30.61-17.46a14,14,0,0,0-.31-3.42l-7.45-32.36c-1.72-7.12-3.23-10.35-15.73-16.6C124.89,8.69,103.76.5,97.51.5,91.69.5,90,8,83.06,8c-6.68,0-11.64-5.6-17.89-5.6-6,0-9.91,4.09-12.93,12.5,0,0-8.41,23.72-9.49,27.16A6.43,6.43,0,0,0,42.53,44c0,9.22,36.3,39.45,84.94,39.45M160,72.07c1.73,8.19,1.73,9.05,1.73,10.13,0,14-15.74,21.77-36.43,21.77C78.54,104,37.58,76.6,37.58,58.49a18.45,18.45,0,0,1,1.51-7.33C22.27,52,.5,55,.5,74.22c0,31.48,74.59,70.28,133.65,70.28,45.28,0,56.7-20.48,56.7-36.65,0-12.72-11-27.16-30.83-35.78"/>
+                    <path d="M579.74,92.8c0,11.89,7.15,17.67,20.19,17.67a52.11,52.11,0,0,0,11.89-1.68V95a24.84,24.84,0,0,1-7.68,1.16c-5.37,0-7.36-1.68-7.36-6.73V68.3h15.56V54.1H596.78v-18l-17,3.68V54.1H568.49V68.3h11.25Zm-53,.32c0-3.68,3.69-5.47,9.26-5.47a43.12,43.12,0,0,1,10.1,1.26v7.15a21.51,21.51,0,0,1-10.63,2.63c-5.46,0-8.73-2.1-8.73-5.57m5.2,17.56c6,0,10.84-1.26,15.36-4.31v3.37h16.82V74.08c0-13.56-9.14-21-24.39-21-8.52,0-16.94,2-26,6.1l6.1,12.52c6.52-2.74,12-4.42,16.83-4.42,7,0,10.62,2.73,10.62,8.31v2.73a49.53,49.53,0,0,0-12.62-1.58c-14.31,0-22.93,6-22.93,16.73,0,9.78,7.78,17.24,20.19,17.24m-92.44-.94h18.09V80.92h30.29v28.82H506V36.12H487.93V64.41H457.64V36.12H439.55ZM370.62,81.87c0-8,6.31-14.1,14.62-14.1A17.22,17.22,0,0,1,397,72.09V91.54A16.36,16.36,0,0,1,385.24,96c-8.2,0-14.62-6.1-14.62-14.09m26.61,27.87h16.83V32.44l-17,3.68V57.05a28.3,28.3,0,0,0-14.2-3.68c-16.19,0-28.92,12.51-28.92,28.5a28.25,28.25,0,0,0,28.4,28.6,25.12,25.12,0,0,0,14.93-4.83ZM320,67c5.36,0,9.88,3.47,11.67,8.83H308.47C310.15,70.3,314.36,67,320,67M291.33,82c0,16.2,13.25,28.82,30.28,28.82,9.36,0,16.2-2.53,23.25-8.42l-11.26-10c-2.63,2.74-6.52,4.21-11.14,4.21a14.39,14.39,0,0,1-13.68-8.83h39.65V83.55c0-17.67-11.88-30.39-28.08-30.39a28.57,28.57,0,0,0-29,28.81M262,51.58c6,0,9.36,3.78,9.36,8.31S268,68.2,262,68.2H244.11V51.58Zm-36,58.16h18.09V82.92h13.77l13.89,26.82H292l-16.2-29.45a22.27,22.27,0,0,0,13.88-20.72c0-13.25-10.41-23.45-26-23.45H226Z"/>
+                </svg>
+                <h1>Lab architecture</h1>
+            </div>
+                <h2>Pieces that make either site serve the IdP</h2>
+                <div class="tech-grid">
+                    <div class="tech-tile">
+                        <div class="tech-layer">Identity</div>
+                        <div class="tech-name">Keycloak 26.7</div>
+                        <div class="tech-detail">features.enabled: [stateless] · per-site cache cluster-name · Operator on CRC</div>
+                    </div>
+                    <div class="tech-tile">
+                        <div class="tech-layer">Data</div>
+                        <div class="tech-name">Postgres 17</div>
+                        <div class="tech-detail">Podman primary on Linux · sync standby on Windows · both Keycloaks JDBC to primary</div>
+                    </div>
+                    <div class="tech-tile">
+                        <div class="tech-layer">Edge</div>
+                        <div class="tech-name">HAProxy</div>
+                        <div class="tech-detail">auth.lan.local:8443 · GET /lb-check expects UP · SNI to both CRC routers</div>
+                    </div>
+                    <div class="tech-tile">
+                        <div class="tech-layer">Clients</div>
+                        <div class="tech-name">PoC SPA</div>
+                        <div class="tech-detail">Node on Linux · HTTPS :8444 · OIDC alice/bob · recovery panel</div>
+                    </div>
+                    <div class="tech-tile">
+                        <div class="tech-layer">Platform</div>
+                        <div class="tech-name">Dual CRC</div>
+                        <div class="tech-detail">Site A Linux · Site B Windows 11 · ns rhbk-mc · shared hostname</div>
+                    </div>
+                    <div class="tech-tile">
+                        <div class="tech-layer">DR note</div>
+                        <div class="tech-name">DB promote</div>
+                        <div class="tech-detail">Sync standby is database DR — Keycloak site failover is automatic via LB</div>
+                    </div>
+                </div>
+            </div>
+            <div class="slide">
+                <div class="slide-header">
+                <svg class="rh-logo" viewBox="0 0 613 145" xmlns="http://www.w3.org/2000/svg">
+                    <path fill="#e00" d="M127.47,83.49c12.51,0,30.61-2.58,30.61-17.46a14,14,0,0,0-.31-3.42l-7.45-32.36c-1.72-7.12-3.23-10.35-15.73-16.6C124.89,8.69,103.76.5,97.51.5,91.69.5,90,8,83.06,8c-6.68,0-11.64-5.6-17.89-5.6-6,0-9.91,4.09-12.93,12.5,0,0-8.41,23.72-9.49,27.16A6.43,6.43,0,0,0,42.53,44c0,9.22,36.3,39.45,84.94,39.45M160,72.07c1.73,8.19,1.73,9.05,1.73,10.13,0,14-15.74,21.77-36.43,21.77C78.54,104,37.58,76.6,37.58,58.49a18.45,18.45,0,0,1,1.51-7.33C22.27,52,.5,55,.5,74.22c0,31.48,74.59,70.28,133.65,70.28,45.28,0,56.7-20.48,56.7-36.65,0-12.72-11-27.16-30.83-35.78"/>
+                    <path d="M579.74,92.8c0,11.89,7.15,17.67,20.19,17.67a52.11,52.11,0,0,0,11.89-1.68V95a24.84,24.84,0,0,1-7.68,1.16c-5.37,0-7.36-1.68-7.36-6.73V68.3h15.56V54.1H596.78v-18l-17,3.68V54.1H568.49V68.3h11.25Zm-53,.32c0-3.68,3.69-5.47,9.26-5.47a43.12,43.12,0,0,1,10.1,1.26v7.15a21.51,21.51,0,0,1-10.63,2.63c-5.46,0-8.73-2.1-8.73-5.57m5.2,17.56c6,0,10.84-1.26,15.36-4.31v3.37h16.82V74.08c0-13.56-9.14-21-24.39-21-8.52,0-16.94,2-26,6.1l6.1,12.52c6.52-2.74,12-4.42,16.83-4.42,7,0,10.62,2.73,10.62,8.31v2.73a49.53,49.53,0,0,0-12.62-1.58c-14.31,0-22.93,6-22.93,16.73,0,9.78,7.78,17.24,20.19,17.24m-92.44-.94h18.09V80.92h30.29v28.82H506V36.12H487.93V64.41H457.64V36.12H439.55ZM370.62,81.87c0-8,6.31-14.1,14.62-14.1A17.22,17.22,0,0,1,397,72.09V91.54A16.36,16.36,0,0,1,385.24,96c-8.2,0-14.62-6.1-14.62-14.09m26.61,27.87h16.83V32.44l-17,3.68V57.05a28.3,28.3,0,0,0-14.2-3.68c-16.19,0-28.92,12.51-28.92,28.5a28.25,28.25,0,0,0,28.4,28.6,25.12,25.12,0,0,0,14.93-4.83ZM320,67c5.36,0,9.88,3.47,11.67,8.83H308.47C310.15,70.3,314.36,67,320,67M291.33,82c0,16.2,13.25,28.82,30.28,28.82,9.36,0,16.2-2.53,23.25-8.42l-11.26-10c-2.63,2.74-6.52,4.21-11.14,4.21a14.39,14.39,0,0,1-13.68-8.83h39.65V83.55c0-17.67-11.88-30.39-28.08-30.39a28.57,28.57,0,0,0-29,28.81M262,51.58c6,0,9.36,3.78,9.36,8.31S268,68.2,262,68.2H244.11V51.58Zm-36,58.16h18.09V82.92h13.77l13.89,26.82H292l-16.2-29.45a22.27,22.27,0,0,0,13.88-20.72c0-13.25-10.41-23.45-26-23.45H226Z"/>
+                </svg>
+                <h1>Why this was hard before</h1>
+            </div>
+                <h2>Shared Postgres alone was not enough</h2>
+                <ul class="challenge-list">
+                    <li><strong>Sessions lived in memory</strong> — Authentication and user sessions sat primarily in embedded Infinispan.</li>
+                    <li><strong>Sticky sessions or XSite</strong> — Multi-DC meant affinity at the LB or Infinispan cross-site replication.</li>
+                    <li><strong>Failover broke mid-login</strong> — Another site did not hold the in-memory state the request needed.</li>
+                    <li><strong>Different route hostnames</strong> — Per-cluster routes created different OIDC issuers and broke clients after failover.</li>
+                </ul>
+            </div>
+            <div class="slide">
+                <div class="slide-header">
+                <svg class="rh-logo" viewBox="0 0 613 145" xmlns="http://www.w3.org/2000/svg">
+                    <path fill="#e00" d="M127.47,83.49c12.51,0,30.61-2.58,30.61-17.46a14,14,0,0,0-.31-3.42l-7.45-32.36c-1.72-7.12-3.23-10.35-15.73-16.6C124.89,8.69,103.76.5,97.51.5,91.69.5,90,8,83.06,8c-6.68,0-11.64-5.6-17.89-5.6-6,0-9.91,4.09-12.93,12.5,0,0-8.41,23.72-9.49,27.16A6.43,6.43,0,0,0,42.53,44c0,9.22,36.3,39.45,84.94,39.45M160,72.07c1.73,8.19,1.73,9.05,1.73,10.13,0,14-15.74,21.77-36.43,21.77C78.54,104,37.58,76.6,37.58,58.49a18.45,18.45,0,0,1,1.51-7.33C22.27,52,.5,55,.5,74.22c0,31.48,74.59,70.28,133.65,70.28,45.28,0,56.7-20.48,56.7-36.65,0-12.72-11-27.16-30.83-35.78"/>
+                    <path d="M579.74,92.8c0,11.89,7.15,17.67,20.19,17.67a52.11,52.11,0,0,0,11.89-1.68V95a24.84,24.84,0,0,1-7.68,1.16c-5.37,0-7.36-1.68-7.36-6.73V68.3h15.56V54.1H596.78v-18l-17,3.68V54.1H568.49V68.3h11.25Zm-53,.32c0-3.68,3.69-5.47,9.26-5.47a43.12,43.12,0,0,1,10.1,1.26v7.15a21.51,21.51,0,0,1-10.63,2.63c-5.46,0-8.73-2.1-8.73-5.57m5.2,17.56c6,0,10.84-1.26,15.36-4.31v3.37h16.82V74.08c0-13.56-9.14-21-24.39-21-8.52,0-16.94,2-26,6.1l6.1,12.52c6.52-2.74,12-4.42,16.83-4.42,7,0,10.62,2.73,10.62,8.31v2.73a49.53,49.53,0,0,0-12.62-1.58c-14.31,0-22.93,6-22.93,16.73,0,9.78,7.78,17.24,20.19,17.24m-92.44-.94h18.09V80.92h30.29v28.82H506V36.12H487.93V64.41H457.64V36.12H439.55ZM370.62,81.87c0-8,6.31-14.1,14.62-14.1A17.22,17.22,0,0,1,397,72.09V91.54A16.36,16.36,0,0,1,385.24,96c-8.2,0-14.62-6.1-14.62-14.09m26.61,27.87h16.83V32.44l-17,3.68V57.05a28.3,28.3,0,0,0-14.2-3.68c-16.19,0-28.92,12.51-28.92,28.5a28.25,28.25,0,0,0,28.4,28.6,25.12,25.12,0,0,0,14.93-4.83ZM320,67c5.36,0,9.88,3.47,11.67,8.83H308.47C310.15,70.3,314.36,67,320,67M291.33,82c0,16.2,13.25,28.82,30.28,28.82,9.36,0,16.2-2.53,23.25-8.42l-11.26-10c-2.63,2.74-6.52,4.21-11.14,4.21a14.39,14.39,0,0,1-13.68-8.83h39.65V83.55c0-17.67-11.88-30.39-28.08-30.39a28.57,28.57,0,0,0-29,28.81M262,51.58c6,0,9.36,3.78,9.36,8.31S268,68.2,262,68.2H244.11V51.58Zm-36,58.16h18.09V82.92h13.77l13.89,26.82H292l-16.2-29.45a22.27,22.27,0,0,0,13.88-20.72c0-13.25-10.41-23.45-26-23.45H226Z"/>
+                </svg>
+                <h1>What made multi-cluster v2 possible</h1>
+            </div>
+                <h2>Three shifts — all required together</h2>
+                <div class="stops-grid" style="grid-template-columns: repeat(3, 1fr);">
+                    <div class="stop-card">
+                        <div class="stop-number">1</div>
+                        <div class="stop-title">Persist critical state</div>
+                        <div class="stop-desc">Cross-site session-related state is externalized so another site can read it from storage.</div>
+                    </div>
+                    <div class="stop-card">
+                        <div class="stop-number">2</div>
+                        <div class="stop-title">Cache stays local</div>
+                        <div class="stop-desc">Embedded cache is per site (cluster-a / cluster-b) — not the multi-site source of truth.</div>
+                    </div>
+                    <div class="stop-card">
+                        <div class="stop-number">3</div>
+                        <div class="stop-title">One public issuer</div>
+                        <div class="stop-desc">Same hostname on every CR plus LB /lb-check so clients never care which CRC answers.</div>
+                    </div>
+                </div>
+                <div class="two-col" style="margin-top:18px;">
+                    <div class="col dark-panel" style="padding:16px 18px;">
+                        <h3 style="color:#EE0000;margin-top:0;">Necessary</h3>
+                        <p style="color:#fff;margin:0;">Shared writable DB + <code style="color:#fff;">stateless</code> feature</p>
+                    </div>
+                    <div class="col dark-panel" style="padding:16px 18px;">
+                        <h3 style="color:#EE0000;margin-top:0;">Not sufficient alone</h3>
+                        <p style="color:#fff;margin:0;">DB without <code style="color:#fff;">stateless</code>, or <code style="color:#fff;">stateless</code> without a consistent shared DB</p>
+                    </div>
+                </div>
+            </div>
+            <div class="slide">
+                <div class="slide-header">
+                <svg class="rh-logo" viewBox="0 0 613 145" xmlns="http://www.w3.org/2000/svg">
+                    <path fill="#e00" d="M127.47,83.49c12.51,0,30.61-2.58,30.61-17.46a14,14,0,0,0-.31-3.42l-7.45-32.36c-1.72-7.12-3.23-10.35-15.73-16.6C124.89,8.69,103.76.5,97.51.5,91.69.5,90,8,83.06,8c-6.68,0-11.64-5.6-17.89-5.6-6,0-9.91,4.09-12.93,12.5,0,0-8.41,23.72-9.49,27.16A6.43,6.43,0,0,0,42.53,44c0,9.22,36.3,39.45,84.94,39.45M160,72.07c1.73,8.19,1.73,9.05,1.73,10.13,0,14-15.74,21.77-36.43,21.77C78.54,104,37.58,76.6,37.58,58.49a18.45,18.45,0,0,1,1.51-7.33C22.27,52,.5,55,.5,74.22c0,31.48,74.59,70.28,133.65,70.28,45.28,0,56.7-20.48,56.7-36.65,0-12.72-11-27.16-30.83-35.78"/>
+                    <path d="M579.74,92.8c0,11.89,7.15,17.67,20.19,17.67a52.11,52.11,0,0,0,11.89-1.68V95a24.84,24.84,0,0,1-7.68,1.16c-5.37,0-7.36-1.68-7.36-6.73V68.3h15.56V54.1H596.78v-18l-17,3.68V54.1H568.49V68.3h11.25Zm-53,.32c0-3.68,3.69-5.47,9.26-5.47a43.12,43.12,0,0,1,10.1,1.26v7.15a21.51,21.51,0,0,1-10.63,2.63c-5.46,0-8.73-2.1-8.73-5.57m5.2,17.56c6,0,10.84-1.26,15.36-4.31v3.37h16.82V74.08c0-13.56-9.14-21-24.39-21-8.52,0-16.94,2-26,6.1l6.1,12.52c6.52-2.74,12-4.42,16.83-4.42,7,0,10.62,2.73,10.62,8.31v2.73a49.53,49.53,0,0,0-12.62-1.58c-14.31,0-22.93,6-22.93,16.73,0,9.78,7.78,17.24,20.19,17.24m-92.44-.94h18.09V80.92h30.29v28.82H506V36.12H487.93V64.41H457.64V36.12H439.55ZM370.62,81.87c0-8,6.31-14.1,14.62-14.1A17.22,17.22,0,0,1,397,72.09V91.54A16.36,16.36,0,0,1,385.24,96c-8.2,0-14.62-6.1-14.62-14.09m26.61,27.87h16.83V32.44l-17,3.68V57.05a28.3,28.3,0,0,0-14.2-3.68c-16.19,0-28.92,12.51-28.92,28.5a28.25,28.25,0,0,0,28.4,28.6,25.12,25.12,0,0,0,14.93-4.83ZM320,67c5.36,0,9.88,3.47,11.67,8.83H308.47C310.15,70.3,314.36,67,320,67M291.33,82c0,16.2,13.25,28.82,30.28,28.82,9.36,0,16.2-2.53,23.25-8.42l-11.26-10c-2.63,2.74-6.52,4.21-11.14,4.21a14.39,14.39,0,0,1-13.68-8.83h39.65V83.55c0-17.67-11.88-30.39-28.08-30.39a28.57,28.57,0,0,0-29,28.81M262,51.58c6,0,9.36,3.78,9.36,8.31S268,68.2,262,68.2H244.11V51.58Zm-36,58.16h18.09V82.92h13.77l13.89,26.82H292l-16.2-29.45a22.27,22.27,0,0,0,13.88-20.72c0-13.25-10.41-23.45-26-23.45H226Z"/>
+                </svg>
+                <h1>Lab topology</h1>
+            </div>
+                <h2>Roles on the LAN</h2>
+                <div class="table-container">
+                    <table class="leads-table">
+                        <thead>
+                            <tr>
+                                <th style="width:18%">Role</th>
+                                <th style="width:28%">Host</th>
+                                <th style="width:22%">Address</th>
+                                <th>Responsibility</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Site A</td>
+                                <td>Linux laptop + CRC</td>
+                                <td>LAN IP (lab)</td>
+                                <td>Keycloak cluster-a · Postgres primary · HAProxy · SPA</td>
+                            </tr>
+                            <tr>
+                                <td>Site B</td>
+                                <td>Windows 11 + CRC</td>
+                                <td>LAN IP (lab)</td>
+                                <td>Keycloak cluster-b · Postgres sync standby</td>
+                            </tr>
+                            <tr>
+                                <td>Public auth</td>
+                                <td>HAProxy on Linux</td>
+                                <td>auth.lan.local:8443</td>
+                                <td>Single OIDC issuer · health-based site selection</td>
+                            </tr>
+                            <tr>
+                                <td>Recovery SPA</td>
+                                <td>Node on Linux</td>
+                                <td>auth.lan.local:8444</td>
+                                <td>Login · refresh · auth health checks</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <p style="margin-top:14px;color:#595959;font-size:0.9em;">Namespace <code>rhbk-mc</code> on both CRCs. Community Operator 26.7+ (RHBK catalog tops out at 26.6.x without <code>stateless</code>).</p>
+            </div>
+            <div class="slide" data-failover-slide="true">
+                <div class="slide-header">
+                <svg class="rh-logo" viewBox="0 0 613 145" xmlns="http://www.w3.org/2000/svg">
+                    <path fill="#e00" d="M127.47,83.49c12.51,0,30.61-2.58,30.61-17.46a14,14,0,0,0-.31-3.42l-7.45-32.36c-1.72-7.12-3.23-10.35-15.73-16.6C124.89,8.69,103.76.5,97.51.5,91.69.5,90,8,83.06,8c-6.68,0-11.64-5.6-17.89-5.6-6,0-9.91,4.09-12.93,12.5,0,0-8.41,23.72-9.49,27.16A6.43,6.43,0,0,0,42.53,44c0,9.22,36.3,39.45,84.94,39.45M160,72.07c1.73,8.19,1.73,9.05,1.73,10.13,0,14-15.74,21.77-36.43,21.77C78.54,104,37.58,76.6,37.58,58.49a18.45,18.45,0,0,1,1.51-7.33C22.27,52,.5,55,.5,74.22c0,31.48,74.59,70.28,133.65,70.28,45.28,0,56.7-20.48,56.7-36.65,0-12.72-11-27.16-30.83-35.78"/>
+                    <path d="M579.74,92.8c0,11.89,7.15,17.67,20.19,17.67a52.11,52.11,0,0,0,11.89-1.68V95a24.84,24.84,0,0,1-7.68,1.16c-5.37,0-7.36-1.68-7.36-6.73V68.3h15.56V54.1H596.78v-18l-17,3.68V54.1H568.49V68.3h11.25Zm-53,.32c0-3.68,3.69-5.47,9.26-5.47a43.12,43.12,0,0,1,10.1,1.26v7.15a21.51,21.51,0,0,1-10.63,2.63c-5.46,0-8.73-2.1-8.73-5.57m5.2,17.56c6,0,10.84-1.26,15.36-4.31v3.37h16.82V74.08c0-13.56-9.14-21-24.39-21-8.52,0-16.94,2-26,6.1l6.1,12.52c6.52-2.74,12-4.42,16.83-4.42,7,0,10.62,2.73,10.62,8.31v2.73a49.53,49.53,0,0,0-12.62-1.58c-14.31,0-22.93,6-22.93,16.73,0,9.78,7.78,17.24,20.19,17.24m-92.44-.94h18.09V80.92h30.29v28.82H506V36.12H487.93V64.41H457.64V36.12H439.55ZM370.62,81.87c0-8,6.31-14.1,14.62-14.1A17.22,17.22,0,0,1,397,72.09V91.54A16.36,16.36,0,0,1,385.24,96c-8.2,0-14.62-6.1-14.62-14.09m26.61,27.87h16.83V32.44l-17,3.68V57.05a28.3,28.3,0,0,0-14.2-3.68c-16.19,0-28.92,12.51-28.92,28.5a28.25,28.25,0,0,0,28.4,28.6,25.12,25.12,0,0,0,14.93-4.83ZM320,67c5.36,0,9.88,3.47,11.67,8.83H308.47C310.15,70.3,314.36,67,320,67M291.33,82c0,16.2,13.25,28.82,30.28,28.82,9.36,0,16.2-2.53,23.25-8.42l-11.26-10c-2.63,2.74-6.52,4.21-11.14,4.21a14.39,14.39,0,0,1-13.68-8.83h39.65V83.55c0-17.67-11.88-30.39-28.08-30.39a28.57,28.57,0,0,0-29,28.81M262,51.58c6,0,9.36,3.78,9.36,8.31S268,68.2,262,68.2H244.11V51.58Zm-36,58.16h18.09V82.92h13.77l13.89,26.82H292l-16.2-29.45a22.27,22.27,0,0,0,13.88-20.72c0-13.25-10.41-23.45-26-23.45H226Z"/>
+                </svg>
+                <h1>Working scenario — drop a site</h1>
+            </div>
+                <h2>Interactive: traffic follows /lb-check</h2>
+                <div class="failover-wrap">
+                    <div class="failover-controls">
+                        <button type="button" class="failover-btn" id="btnDropSiteA">Drop Site A</button>
+                        <button type="button" class="failover-btn" id="btnDropSiteB">Drop Site B</button>
+                        <button type="button" class="failover-btn danger" id="btnDropBoth">Drop both sites</button>
+                        <button type="button" class="failover-btn secondary" id="btnRestore">Restore both sites</button>
+                        <span class="failover-status" id="failoverStatus"><strong>Mode:</strong> both sites healthy · round-robin</span>
+                    </div>
+                    <canvas id="failoverCanvas" width="1200" height="480" aria-label="Animated failover diagram from SPA through HAProxy to Site A and Site B"></canvas>
+                    <p class="failover-caption">Packets only reach healthy backends. One site down = IdP continues on the other. Both down = complete sites failure (no auth until a site recovers).</p>
+                </div>
+            </div>
+            <div class="slide">
+                <div class="slide-header">
+                <svg class="rh-logo" viewBox="0 0 613 145" xmlns="http://www.w3.org/2000/svg">
+                    <path fill="#e00" d="M127.47,83.49c12.51,0,30.61-2.58,30.61-17.46a14,14,0,0,0-.31-3.42l-7.45-32.36c-1.72-7.12-3.23-10.35-15.73-16.6C124.89,8.69,103.76.5,97.51.5,91.69.5,90,8,83.06,8c-6.68,0-11.64-5.6-17.89-5.6-6,0-9.91,4.09-12.93,12.5,0,0-8.41,23.72-9.49,27.16A6.43,6.43,0,0,0,42.53,44c0,9.22,36.3,39.45,84.94,39.45M160,72.07c1.73,8.19,1.73,9.05,1.73,10.13,0,14-15.74,21.77-36.43,21.77C78.54,104,37.58,76.6,37.58,58.49a18.45,18.45,0,0,1,1.51-7.33C22.27,52,.5,55,.5,74.22c0,31.48,74.59,70.28,133.65,70.28,45.28,0,56.7-20.48,56.7-36.65,0-12.72-11-27.16-30.83-35.78"/>
+                    <path d="M579.74,92.8c0,11.89,7.15,17.67,20.19,17.67a52.11,52.11,0,0,0,11.89-1.68V95a24.84,24.84,0,0,1-7.68,1.16c-5.37,0-7.36-1.68-7.36-6.73V68.3h15.56V54.1H596.78v-18l-17,3.68V54.1H568.49V68.3h11.25Zm-53,.32c0-3.68,3.69-5.47,9.26-5.47a43.12,43.12,0,0,1,10.1,1.26v7.15a21.51,21.51,0,0,1-10.63,2.63c-5.46,0-8.73-2.1-8.73-5.57m5.2,17.56c6,0,10.84-1.26,15.36-4.31v3.37h16.82V74.08c0-13.56-9.14-21-24.39-21-8.52,0-16.94,2-26,6.1l6.1,12.52c6.52-2.74,12-4.42,16.83-4.42,7,0,10.62,2.73,10.62,8.31v2.73a49.53,49.53,0,0,0-12.62-1.58c-14.31,0-22.93,6-22.93,16.73,0,9.78,7.78,17.24,20.19,17.24m-92.44-.94h18.09V80.92h30.29v28.82H506V36.12H487.93V64.41H457.64V36.12H439.55ZM370.62,81.87c0-8,6.31-14.1,14.62-14.1A17.22,17.22,0,0,1,397,72.09V91.54A16.36,16.36,0,0,1,385.24,96c-8.2,0-14.62-6.1-14.62-14.09m26.61,27.87h16.83V32.44l-17,3.68V57.05a28.3,28.3,0,0,0-14.2-3.68c-16.19,0-28.92,12.51-28.92,28.5a28.25,28.25,0,0,0,28.4,28.6,25.12,25.12,0,0,0,14.93-4.83ZM320,67c5.36,0,9.88,3.47,11.67,8.83H308.47C310.15,70.3,314.36,67,320,67M291.33,82c0,16.2,13.25,28.82,30.28,28.82,9.36,0,16.2-2.53,23.25-8.42l-11.26-10c-2.63,2.74-6.52,4.21-11.14,4.21a14.39,14.39,0,0,1-13.68-8.83h39.65V83.55c0-17.67-11.88-30.39-28.08-30.39a28.57,28.57,0,0,0-29,28.81M262,51.58c6,0,9.36,3.78,9.36,8.31S268,68.2,262,68.2H244.11V51.58Zm-36,58.16h18.09V82.92h13.77l13.89,26.82H292l-16.2-29.45a22.27,22.27,0,0,0,13.88-20.72c0-13.25-10.41-23.45-26-23.45H226Z"/>
+                </svg>
+                <h1>Proven failover drill</h1>
+            </div>
+                <h2>What we ran in the lab</h2>
+                <div class="stops-grid">
+                    <div class="stop-card">
+                        <div class="stop-number">1</div>
+                        <div class="stop-title">Log in</div>
+                        <div class="stop-desc">SPA via auth.lan.local:8443 — alice or bob</div>
+                    </div>
+                    <div class="stop-card">
+                        <div class="stop-number">2</div>
+                        <div class="stop-title">Stop one site</div>
+                        <div class="stop-desc">Scale Keycloak to 0 or crc stop; leave Postgres + HAProxy up</div>
+                    </div>
+                    <div class="stop-card">
+                        <div class="stop-number">3</div>
+                        <div class="stop-title">LB reacts</div>
+                        <div class="stop-desc">Dead site fails /lb-check; peer stays in rotation</div>
+                    </div>
+                    <div class="stop-card">
+                        <div class="stop-number">4</div>
+                        <div class="stop-title">Clients continue</div>
+                        <div class="stop-desc">Token refresh works; issuer unchanged</div>
+                    </div>
+                </div>
+                <ul class="challenge-list" style="margin-top:8px;">
+                    <li><strong>Issuer check:</strong> <code>/.well-known/openid-configuration</code> → same issuer no matter which backend answers</li>
+                    <li><strong>Both sites down:</strong> Complete sites failure — restore at least one Keycloak before auth works again</li>
+                </ul>
+            </div>
+            <div class="slide">
+                <div class="slide-header">
+                <svg class="rh-logo" viewBox="0 0 613 145" xmlns="http://www.w3.org/2000/svg">
+                    <path fill="#e00" d="M127.47,83.49c12.51,0,30.61-2.58,30.61-17.46a14,14,0,0,0-.31-3.42l-7.45-32.36c-1.72-7.12-3.23-10.35-15.73-16.6C124.89,8.69,103.76.5,97.51.5,91.69.5,90,8,83.06,8c-6.68,0-11.64-5.6-17.89-5.6-6,0-9.91,4.09-12.93,12.5,0,0-8.41,23.72-9.49,27.16A6.43,6.43,0,0,0,42.53,44c0,9.22,36.3,39.45,84.94,39.45M160,72.07c1.73,8.19,1.73,9.05,1.73,10.13,0,14-15.74,21.77-36.43,21.77C78.54,104,37.58,76.6,37.58,58.49a18.45,18.45,0,0,1,1.51-7.33C22.27,52,.5,55,.5,74.22c0,31.48,74.59,70.28,133.65,70.28,45.28,0,56.7-20.48,56.7-36.65,0-12.72-11-27.16-30.83-35.78"/>
+                    <path d="M579.74,92.8c0,11.89,7.15,17.67,20.19,17.67a52.11,52.11,0,0,0,11.89-1.68V95a24.84,24.84,0,0,1-7.68,1.16c-5.37,0-7.36-1.68-7.36-6.73V68.3h15.56V54.1H596.78v-18l-17,3.68V54.1H568.49V68.3h11.25Zm-53,.32c0-3.68,3.69-5.47,9.26-5.47a43.12,43.12,0,0,1,10.1,1.26v7.15a21.51,21.51,0,0,1-10.63,2.63c-5.46,0-8.73-2.1-8.73-5.57m5.2,17.56c6,0,10.84-1.26,15.36-4.31v3.37h16.82V74.08c0-13.56-9.14-21-24.39-21-8.52,0-16.94,2-26,6.1l6.1,12.52c6.52-2.74,12-4.42,16.83-4.42,7,0,10.62,2.73,10.62,8.31v2.73a49.53,49.53,0,0,0-12.62-1.58c-14.31,0-22.93,6-22.93,16.73,0,9.78,7.78,17.24,20.19,17.24m-92.44-.94h18.09V80.92h30.29v28.82H506V36.12H487.93V64.41H457.64V36.12H439.55ZM370.62,81.87c0-8,6.31-14.1,14.62-14.1A17.22,17.22,0,0,1,397,72.09V91.54A16.36,16.36,0,0,1,385.24,96c-8.2,0-14.62-6.1-14.62-14.09m26.61,27.87h16.83V32.44l-17,3.68V57.05a28.3,28.3,0,0,0-14.2-3.68c-16.19,0-28.92,12.51-28.92,28.5a28.25,28.25,0,0,0,28.4,28.6,25.12,25.12,0,0,0,14.93-4.83ZM320,67c5.36,0,9.88,3.47,11.67,8.83H308.47C310.15,70.3,314.36,67,320,67M291.33,82c0,16.2,13.25,28.82,30.28,28.82,9.36,0,16.2-2.53,23.25-8.42l-11.26-10c-2.63,2.74-6.52,4.21-11.14,4.21a14.39,14.39,0,0,1-13.68-8.83h39.65V83.55c0-17.67-11.88-30.39-28.08-30.39a28.57,28.57,0,0,0-29,28.81M262,51.58c6,0,9.36,3.78,9.36,8.31S268,68.2,262,68.2H244.11V51.58Zm-36,58.16h18.09V82.92h13.77l13.89,26.82H292l-16.2-29.45a22.27,22.27,0,0,0,13.88-20.72c0-13.25-10.41-23.45-26-23.45H226Z"/>
+                </svg>
+                <h1>DR questions — RTO and RPO</h1>
+            </div>
+                <h2>Two different clocks — do not conflate them</h2>
+                <div class="metric-grid">
+                    <div class="metric-card">
+                        <div class="value" style="font-size:1.6em;">RTO</div>
+                        <div class="label">Recovery time objective — how long until the IdP (or DB) is usable again</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="value" style="font-size:1.6em;">RPO</div>
+                        <div class="label">Recovery point objective — how much committed data you can afford to lose</div>
+                    </div>
+                </div>
+                <div class="table-container" style="margin-top:14px;">
+                    <table class="leads-table">
+                        <thead>
+                            <tr>
+                                <th style="width:28%">Failure mode</th>
+                                <th style="width:16%">Lab RTO*</th>
+                                <th style="width:16%">Lab RPO*</th>
+                                <th>What actually recovers</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>One Keycloak site down (peer UP, DB primary UP)</td>
+                                <td>~15–30 s</td>
+                                <td>~0</td>
+                                <td>HAProxy /lb-check removes the dead site; issuer unchanged</td>
+                            </tr>
+                            <tr>
+                                <td>Site A CRC down; Postgres + HAProxy still up</td>
+                                <td>~15–30 s</td>
+                                <td>~0</td>
+                                <td>Same as above if Site B Keycloak is healthy</td>
+                            </tr>
+                            <tr>
+                                <td>Both Keycloak sites down</td>
+                                <td>Until a site returns</td>
+                                <td>~0 (DB intact)</td>
+                                <td><strong>Complete sites failure</strong> — LB has nowhere to send OIDC</td>
+                            </tr>
+                            <tr>
+                                <td>Postgres primary lost (need standby promote)</td>
+                                <td>Minutes (manual)</td>
+                                <td>~0 if sync</td>
+                                <td>Promote standby, retarget JDBC, restart Keycloak — separate runbook</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <p style="margin-top:10px;font-size:0.8em;color:#595959;">*Lab observations, not contractual SLOs. HAProxy check: inter 5s, fall 3 ≈ ~15s detection. Sync standby RPO assumes <code>sync_state=sync</code>.</p>
+            </div>
+            <div class="slide">
+                <div class="slide-header">
+                <svg class="rh-logo" viewBox="0 0 613 145" xmlns="http://www.w3.org/2000/svg">
+                    <path fill="#e00" d="M127.47,83.49c12.51,0,30.61-2.58,30.61-17.46a14,14,0,0,0-.31-3.42l-7.45-32.36c-1.72-7.12-3.23-10.35-15.73-16.6C124.89,8.69,103.76.5,97.51.5,91.69.5,90,8,83.06,8c-6.68,0-11.64-5.6-17.89-5.6-6,0-9.91,4.09-12.93,12.5,0,0-8.41,23.72-9.49,27.16A6.43,6.43,0,0,0,42.53,44c0,9.22,36.3,39.45,84.94,39.45M160,72.07c1.73,8.19,1.73,9.05,1.73,10.13,0,14-15.74,21.77-36.43,21.77C78.54,104,37.58,76.6,37.58,58.49a18.45,18.45,0,0,1,1.51-7.33C22.27,52,.5,55,.5,74.22c0,31.48,74.59,70.28,133.65,70.28,45.28,0,56.7-20.48,56.7-36.65,0-12.72-11-27.16-30.83-35.78"/>
+                    <path d="M579.74,92.8c0,11.89,7.15,17.67,20.19,17.67a52.11,52.11,0,0,0,11.89-1.68V95a24.84,24.84,0,0,1-7.68,1.16c-5.37,0-7.36-1.68-7.36-6.73V68.3h15.56V54.1H596.78v-18l-17,3.68V54.1H568.49V68.3h11.25Zm-53,.32c0-3.68,3.69-5.47,9.26-5.47a43.12,43.12,0,0,1,10.1,1.26v7.15a21.51,21.51,0,0,1-10.63,2.63c-5.46,0-8.73-2.1-8.73-5.57m5.2,17.56c6,0,10.84-1.26,15.36-4.31v3.37h16.82V74.08c0-13.56-9.14-21-24.39-21-8.52,0-16.94,2-26,6.1l6.1,12.52c6.52-2.74,12-4.42,16.83-4.42,7,0,10.62,2.73,10.62,8.31v2.73a49.53,49.53,0,0,0-12.62-1.58c-14.31,0-22.93,6-22.93,16.73,0,9.78,7.78,17.24,20.19,17.24m-92.44-.94h18.09V80.92h30.29v28.82H506V36.12H487.93V64.41H457.64V36.12H439.55ZM370.62,81.87c0-8,6.31-14.1,14.62-14.1A17.22,17.22,0,0,1,397,72.09V91.54A16.36,16.36,0,0,1,385.24,96c-8.2,0-14.62-6.1-14.62-14.09m26.61,27.87h16.83V32.44l-17,3.68V57.05a28.3,28.3,0,0,0-14.2-3.68c-16.19,0-28.92,12.51-28.92,28.5a28.25,28.25,0,0,0,28.4,28.6,25.12,25.12,0,0,0,14.93-4.83ZM320,67c5.36,0,9.88,3.47,11.67,8.83H308.47C310.15,70.3,314.36,67,320,67M291.33,82c0,16.2,13.25,28.82,30.28,28.82,9.36,0,16.2-2.53,23.25-8.42l-11.26-10c-2.63,2.74-6.52,4.21-11.14,4.21a14.39,14.39,0,0,1-13.68-8.83h39.65V83.55c0-17.67-11.88-30.39-28.08-30.39a28.57,28.57,0,0,0-29,28.81M262,51.58c6,0,9.36,3.78,9.36,8.31S268,68.2,262,68.2H244.11V51.58Zm-36,58.16h18.09V82.92h13.77l13.89,26.82H292l-16.2-29.45a22.27,22.27,0,0,0,13.88-20.72c0-13.25-10.41-23.45-26-23.45H226Z"/>
+                </svg>
+                <h1>DR scenario playbook</h1>
+            </div>
+                <h2>Answer the room before they ask</h2>
+                <div class="rec-grid">
+                    <div class="rec-card">
+                        <div class="rec-title">“What is our IdP RTO?”</div>
+                        <div class="rec-detail">For a single-site Keycloak outage with the other site healthy: dominated by LB health detection (seconds), not a full rebuild.</div>
+                        <div class="rec-action">Prove it: drop one site in the SPA drill</div>
+                    </div>
+                    <div class="rec-card">
+                        <div class="rec-title">“What is our RPO?”</div>
+                        <div class="rec-detail">With sync replication to the standby, committed transactions wait for the standby — RPO approaches zero for DB loss. Async would widen RPO.</div>
+                        <div class="rec-action">Prove it: check pg_stat_replication sync_state</div>
+                    </div>
+                    <div class="rec-card">
+                        <div class="rec-title">“Both sites failed — now what?”</div>
+                        <div class="rec-detail">That is complete sites failure. HAProxy cannot invent capacity. Restore at least one Keycloak — RTO is operational, not automatic.</div>
+                        <div class="rec-action">Demo: Drop both sites on the canvas</div>
+                    </div>
+                    <div class="rec-card">
+                        <div class="rec-title">“Did we lose the database?”</div>
+                        <div class="rec-detail">Different path: promote the sync standby, point both CRs at the new primary, restart pods. IdP site failover ≠ DB promote.</div>
+                        <div class="rec-action">Runbook: scripts/promote-standby.sh</div>
+                    </div>
+                </div>
+                <div class="dark-panel" style="margin-top:14px;padding:14px 18px;">
+                    <p style="margin:0;color:#fff;font-size:0.95em;"><strong style="color:#EE0000;">Sound bite:</strong> Multi-cluster <code style="color:#fff;">stateless</code> buys fast IdP RTO across sites. Sync Postgres buys low RPO for DB DR. Neither replaces the other.</p>
+                </div>
+            </div>
+            <div class="slide">
+                <div class="slide-header">
+                <svg class="rh-logo" viewBox="0 0 613 145" xmlns="http://www.w3.org/2000/svg">
+                    <path fill="#e00" d="M127.47,83.49c12.51,0,30.61-2.58,30.61-17.46a14,14,0,0,0-.31-3.42l-7.45-32.36c-1.72-7.12-3.23-10.35-15.73-16.6C124.89,8.69,103.76.5,97.51.5,91.69.5,90,8,83.06,8c-6.68,0-11.64-5.6-17.89-5.6-6,0-9.91,4.09-12.93,12.5,0,0-8.41,23.72-9.49,27.16A6.43,6.43,0,0,0,42.53,44c0,9.22,36.3,39.45,84.94,39.45M160,72.07c1.73,8.19,1.73,9.05,1.73,10.13,0,14-15.74,21.77-36.43,21.77C78.54,104,37.58,76.6,37.58,58.49a18.45,18.45,0,0,1,1.51-7.33C22.27,52,.5,55,.5,74.22c0,31.48,74.59,70.28,133.65,70.28,45.28,0,56.7-20.48,56.7-36.65,0-12.72-11-27.16-30.83-35.78"/>
+                    <path d="M579.74,92.8c0,11.89,7.15,17.67,20.19,17.67a52.11,52.11,0,0,0,11.89-1.68V95a24.84,24.84,0,0,1-7.68,1.16c-5.37,0-7.36-1.68-7.36-6.73V68.3h15.56V54.1H596.78v-18l-17,3.68V54.1H568.49V68.3h11.25Zm-53,.32c0-3.68,3.69-5.47,9.26-5.47a43.12,43.12,0,0,1,10.1,1.26v7.15a21.51,21.51,0,0,1-10.63,2.63c-5.46,0-8.73-2.1-8.73-5.57m5.2,17.56c6,0,10.84-1.26,15.36-4.31v3.37h16.82V74.08c0-13.56-9.14-21-24.39-21-8.52,0-16.94,2-26,6.1l6.1,12.52c6.52-2.74,12-4.42,16.83-4.42,7,0,10.62,2.73,10.62,8.31v2.73a49.53,49.53,0,0,0-12.62-1.58c-14.31,0-22.93,6-22.93,16.73,0,9.78,7.78,17.24,20.19,17.24m-92.44-.94h18.09V80.92h30.29v28.82H506V36.12H487.93V64.41H457.64V36.12H439.55ZM370.62,81.87c0-8,6.31-14.1,14.62-14.1A17.22,17.22,0,0,1,397,72.09V91.54A16.36,16.36,0,0,1,385.24,96c-8.2,0-14.62-6.1-14.62-14.09m26.61,27.87h16.83V32.44l-17,3.68V57.05a28.3,28.3,0,0,0-14.2-3.68c-16.19,0-28.92,12.51-28.92,28.5a28.25,28.25,0,0,0,28.4,28.6,25.12,25.12,0,0,0,14.93-4.83ZM320,67c5.36,0,9.88,3.47,11.67,8.83H308.47C310.15,70.3,314.36,67,320,67M291.33,82c0,16.2,13.25,28.82,30.28,28.82,9.36,0,16.2-2.53,23.25-8.42l-11.26-10c-2.63,2.74-6.52,4.21-11.14,4.21a14.39,14.39,0,0,1-13.68-8.83h39.65V83.55c0-17.67-11.88-30.39-28.08-30.39a28.57,28.57,0,0,0-29,28.81M262,51.58c6,0,9.36,3.78,9.36,8.31S268,68.2,262,68.2H244.11V51.58Zm-36,58.16h18.09V82.92h13.77l13.89,26.82H292l-16.2-29.45a22.27,22.27,0,0,0,13.88-20.72c0-13.25-10.41-23.45-26-23.45H226Z"/>
+                </svg>
+                <h1>Recovery SPA</h1>
+            </div>
+                <h2>Exercise the IdP like a real client</h2>
+                <div class="two-col">
+                    <div class="col">
+                        <ul class="challenge-list">
+                            <li><strong>Based on</strong> RHBK js/spa quickstart with Red Hat branding</li>
+                            <li><strong>Runs on</strong> Linux host (HTTP :8080, HTTPS :8444 for LAN)</li>
+                            <li><strong>Users</strong> alice/alice · bob/bob on poc-realm</li>
+                            <li><strong>Health</strong> same-origin /api/lb-check proxy (avoids browser TLS/CORS traps)</li>
+                        </ul>
+                    </div>
+                    <div class="col">
+                        <div class="dark-panel" style="padding:18px 20px;height:100%;">
+                            <h3 style="color:#EE0000;margin-top:0;">Start on Linux</h3>
+                            <p style="font-family:'Red Hat Mono',monospace;font-size:0.85em;color:#fff;line-height:1.6;margin:0;">
+cd apps/poc-spa<br>
+npm install<br>
+npm run setup-realm<br>
+npm start
+                            </p>
+                            <p style="color:#fff;margin-top:14px;font-size:0.9em;">Open <strong style="color:#EE0000;">https://auth.lan.local:8444</strong> — accept the lab cert once.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="slide">
+                <div class="slide-header">
+                <svg class="rh-logo" viewBox="0 0 613 145" xmlns="http://www.w3.org/2000/svg">
+                    <path fill="#e00" d="M127.47,83.49c12.51,0,30.61-2.58,30.61-17.46a14,14,0,0,0-.31-3.42l-7.45-32.36c-1.72-7.12-3.23-10.35-15.73-16.6C124.89,8.69,103.76.5,97.51.5,91.69.5,90,8,83.06,8c-6.68,0-11.64-5.6-17.89-5.6-6,0-9.91,4.09-12.93,12.5,0,0-8.41,23.72-9.49,27.16A6.43,6.43,0,0,0,42.53,44c0,9.22,36.3,39.45,84.94,39.45M160,72.07c1.73,8.19,1.73,9.05,1.73,10.13,0,14-15.74,21.77-36.43,21.77C78.54,104,37.58,76.6,37.58,58.49a18.45,18.45,0,0,1,1.51-7.33C22.27,52,.5,55,.5,74.22c0,31.48,74.59,70.28,133.65,70.28,45.28,0,56.7-20.48,56.7-36.65,0-12.72-11-27.16-30.83-35.78"/>
+                    <path d="M579.74,92.8c0,11.89,7.15,17.67,20.19,17.67a52.11,52.11,0,0,0,11.89-1.68V95a24.84,24.84,0,0,1-7.68,1.16c-5.37,0-7.36-1.68-7.36-6.73V68.3h15.56V54.1H596.78v-18l-17,3.68V54.1H568.49V68.3h11.25Zm-53,.32c0-3.68,3.69-5.47,9.26-5.47a43.12,43.12,0,0,1,10.1,1.26v7.15a21.51,21.51,0,0,1-10.63,2.63c-5.46,0-8.73-2.1-8.73-5.57m5.2,17.56c6,0,10.84-1.26,15.36-4.31v3.37h16.82V74.08c0-13.56-9.14-21-24.39-21-8.52,0-16.94,2-26,6.1l6.1,12.52c6.52-2.74,12-4.42,16.83-4.42,7,0,10.62,2.73,10.62,8.31v2.73a49.53,49.53,0,0,0-12.62-1.58c-14.31,0-22.93,6-22.93,16.73,0,9.78,7.78,17.24,20.19,17.24m-92.44-.94h18.09V80.92h30.29v28.82H506V36.12H487.93V64.41H457.64V36.12H439.55ZM370.62,81.87c0-8,6.31-14.1,14.62-14.1A17.22,17.22,0,0,1,397,72.09V91.54A16.36,16.36,0,0,1,385.24,96c-8.2,0-14.62-6.1-14.62-14.09m26.61,27.87h16.83V32.44l-17,3.68V57.05a28.3,28.3,0,0,0-14.2-3.68c-16.19,0-28.92,12.51-28.92,28.5a28.25,28.25,0,0,0,28.4,28.6,25.12,25.12,0,0,0,14.93-4.83ZM320,67c5.36,0,9.88,3.47,11.67,8.83H308.47C310.15,70.3,314.36,67,320,67M291.33,82c0,16.2,13.25,28.82,30.28,28.82,9.36,0,16.2-2.53,23.25-8.42l-11.26-10c-2.63,2.74-6.52,4.21-11.14,4.21a14.39,14.39,0,0,1-13.68-8.83h39.65V83.55c0-17.67-11.88-30.39-28.08-30.39a28.57,28.57,0,0,0-29,28.81M262,51.58c6,0,9.36,3.78,9.36,8.31S268,68.2,262,68.2H244.11V51.58Zm-36,58.16h18.09V82.92h13.77l13.89,26.82H292l-16.2-29.45a22.27,22.27,0,0,0,13.88-20.72c0-13.25-10.41-23.45-26-23.45H226Z"/>
+                </svg>
+                <h1>Takeaways</h1>
+            </div>
+                <h2>What to carry forward</h2>
+                <div class="rec-grid">
+                    <div class="rec-card">
+                        <div class="rec-title">Same public hostname everywhere</div>
+                        <div class="rec-detail">Every Keycloak CR must advertise the LB URL as hostname/issuer — not per-cluster OpenShift route names.</div>
+                        <div class="rec-action">Action: verify issuer after each deploy</div>
+                    </div>
+                    <div class="rec-card">
+                        <div class="rec-title">Health check is the cutover signal</div>
+                        <div class="rec-detail">Probe GET /lb-check and expect UP. That is how a dead site leaves rotation without sticky sessions.</div>
+                        <div class="rec-action">Action: wire LB checks before app traffic</div>
+                    </div>
+                    <div class="rec-card">
+                        <div class="rec-title">Separate IdP RTO from DB RPO</div>
+                        <div class="rec-detail">Site failover is seconds via LB. Database promote is a manual DR path with its own clock.</div>
+                        <div class="rec-action">Action: document both runbooks and targets</div>
+                    </div>
+                    <div class="rec-card">
+                        <div class="rec-title">Both sites down is different</div>
+                        <div class="rec-detail">Complete sites failure is not covered by HAProxy alone — capacity must return somewhere.</div>
+                        <div class="rec-action">Action: plan rebuild / spare capacity</div>
+                    </div>
+                </div>
+            </div>
+            <div class="slide title-slide">
+                <div class="title-content">
+                    <h1 class="main-title" style="font-size:3.2em !important;">Questions?</h1>
+                    <p class="subtitle">RHBK multi-cluster v2 PoC</p>
+                    <p class="event-info">github.com/Jerczey/rhbk-multi-cluster-v2</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="navigation">
+        <button class="nav-btn" id="prevBtn" onclick="changeSlide(-1)">&lsaquo;</button>
+        <span class="slide-counter"><span id="currentSlide">1</span> / <span id="totalSlides"></span></span>
+        <button class="nav-btn" id="nextBtn" onclick="changeSlide(1)">&rsaquo;</button>
+    </div>
+
+    <script>
+
+        let currentSlide = 1;
+        const totalSlides = document.querySelectorAll('.slide').length;
+
+        document.getElementById('totalSlides').textContent = totalSlides;
+
+        function showSlide(n) {
+            const slides = document.querySelectorAll('.slide');
+            if (n > totalSlides) currentSlide = totalSlides;
+            else if (n < 1) currentSlide = 1;
+            else currentSlide = n;
+
+            slides.forEach(s => s.classList.remove('active'));
+            slides[currentSlide - 1].classList.add('active');
+            document.getElementById('currentSlide').textContent = currentSlide;
+
+            const progress = (currentSlide / totalSlides) * 100;
+            document.getElementById('progressBar').style.width = progress + '%';
+
+            document.getElementById('prevBtn').disabled = currentSlide === 1;
+            document.getElementById('nextBtn').disabled = currentSlide === totalSlides;
+        }
+
+        function changeSlide(n) { showSlide(currentSlide + n); }
+
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'ArrowLeft' || e.key === 'ArrowUp')   changeSlide(-1);
+            if (e.key === 'ArrowRight' || e.key === 'ArrowDown') changeSlide(1);
+        });
+
+        showSlide(1);
+    
+
+        /* ── FAILOVER CANVAS ANIMATION ───────────────────────── */
+        (function () {
+            const canvas = document.getElementById('failoverCanvas');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            const statusEl = document.getElementById('failoverStatus');
+            const btnDropA = document.getElementById('btnDropSiteA');
+            const btnDropB = document.getElementById('btnDropSiteB');
+            const btnDropBoth = document.getElementById('btnDropBoth');
+            const btnRestore = document.getElementById('btnRestore');
+
+            const RH = {
+                red: '#EE0000',
+                black: '#151515',
+                white: '#FFFFFF',
+                gray: '#595959',
+                light: '#f5f5f5',
+                success: '#3d7317',
+                danger: '#f0561d',
+                info: '#0066cc'
+            };
+
+            let siteAUp = true;
+            let siteBUp = true;
+            let packets = [];
+            let failPulse = 0;
+            let raf = null;
+            let lastSlideActive = false;
+
+            const nodes = {
+                spa:  { x: 110, y: 240, w: 140, h: 70, label: 'PoC SPA', sub: ':8444' },
+                lb:   { x: 400, y: 240, w: 160, h: 70, label: 'HAProxy', sub: 'auth.lan.local' },
+                a:    { x: 760, y: 120, w: 170, h: 80, label: 'Site A', sub: 'cluster-a · Linux' },
+                b:    { x: 760, y: 320, w: 170, h: 80, label: 'Site B', sub: 'cluster-b · Windows' },
+                db:   { x: 1040, y: 240, w: 130, h: 70, label: 'Postgres', sub: 'shared primary' }
+            };
+
+            function bothDown() { return !siteAUp && !siteBUp; }
+            function center(n) { return { x: n.x + n.w / 2, y: n.y + n.h / 2 }; }
+
+            function roundRect(x, y, w, h, r) {
+                ctx.beginPath();
+                ctx.moveTo(x + r, y);
+                ctx.arcTo(x + w, y, x + w, y + h, r);
+                ctx.arcTo(x + w, y + h, x, y + h, r);
+                ctx.arcTo(x, y + h, x, y, r);
+                ctx.arcTo(x, y, x + w, y, r);
+                ctx.closePath();
+            }
+
+            function drawNode(n, up) {
+                ctx.save();
+                if (!up) ctx.globalAlpha = 0.45;
+                ctx.fillStyle = RH.white;
+                ctx.strokeStyle = up ? RH.black : RH.danger;
+                ctx.lineWidth = 2;
+                roundRect(n.x, n.y, n.w, n.h, 8);
+                ctx.fill();
+                ctx.stroke();
+                ctx.fillStyle = up ? RH.red : RH.danger;
+                ctx.fillRect(n.x, n.y, 6, n.h);
+                ctx.fillStyle = RH.black;
+                ctx.font = '700 15px "Red Hat Display", sans-serif';
+                ctx.fillText(n.label, n.x + 16, n.y + 30);
+                ctx.fillStyle = RH.gray;
+                ctx.font = '400 12px "Red Hat Text", sans-serif';
+                ctx.fillText(n.sub, n.x + 16, n.y + 50);
+                const pill = up ? 'UP' : 'DOWN';
+                const pw = 48;
+                ctx.fillStyle = up ? RH.success : RH.danger;
+                roundRect(n.x + n.w - pw - 10, n.y + 10, pw, 20, 4);
+                ctx.fill();
+                ctx.fillStyle = RH.white;
+                ctx.font = '700 11px "Red Hat Text", sans-serif';
+                ctx.fillText(pill, n.x + n.w - pw - 2, n.y + 24);
+                ctx.restore();
+            }
+
+            function drawLink(a, b, active, dashed) {
+                const A = center(a), B = center(b);
+                ctx.save();
+                ctx.beginPath();
+                ctx.moveTo(A.x, A.y);
+                ctx.lineTo(B.x, B.y);
+                ctx.strokeStyle = active ? RH.info : '#c8c8c8';
+                ctx.lineWidth = active ? 3 : 1.5;
+                if (dashed) ctx.setLineDash([6, 6]);
+                ctx.stroke();
+                ctx.restore();
+            }
+
+            function spawnPacket(path, fail) {
+                packets.push({ path, u: 0, speed: fail ? 0.02 : (0.012 + Math.random() * 0.008), fail: !!fail });
+            }
+
+            function maybeSpawn() {
+                if (bothDown()) {
+                    if (Math.random() > 0.12) return;
+                    spawnPacket([
+                        { x: center(nodes.spa).x, y: center(nodes.spa).y },
+                        { x: center(nodes.lb).x, y: center(nodes.lb).y }
+                    ], true);
+                    return;
+                }
+                if (Math.random() > 0.08) return;
+                const path = [
+                    { x: center(nodes.spa).x, y: center(nodes.spa).y },
+                    { x: center(nodes.lb).x, y: center(nodes.lb).y }
+                ];
+                const targets = [];
+                if (siteAUp) targets.push(nodes.a);
+                if (siteBUp) targets.push(nodes.b);
+                if (!targets.length) return;
+                const tgt = targets[Math.floor(Math.random() * targets.length)];
+                path.push({ x: center(tgt).x, y: center(tgt).y });
+                path.push({ x: center(nodes.db).x, y: center(nodes.db).y });
+                spawnPacket(path, false);
+            }
+
+            function pointOnPath(path, u) {
+                const segs = path.length - 1;
+                const scaled = u * segs;
+                const i = Math.min(Math.floor(scaled), segs - 1);
+                const local = scaled - i;
+                const a = path[i], b = path[i + 1];
+                return { x: a.x + (b.x - a.x) * local, y: a.y + (b.y - a.y) * local };
+            }
+
+            function drawPackets() {
+                packets = packets.filter(p => {
+                    p.u += p.speed;
+                    if (p.u >= 1) {
+                        if (p.fail) {
+                            const pt = pointOnPath(p.path, 1);
+                            ctx.strokeStyle = RH.danger;
+                            ctx.lineWidth = 3;
+                            ctx.beginPath();
+                            ctx.moveTo(pt.x - 8, pt.y - 8);
+                            ctx.lineTo(pt.x + 8, pt.y + 8);
+                            ctx.moveTo(pt.x + 8, pt.y - 8);
+                            ctx.lineTo(pt.x - 8, pt.y + 8);
+                            ctx.stroke();
+                        }
+                        return false;
+                    }
+                    const pt = pointOnPath(p.path, p.u);
+                    ctx.beginPath();
+                    ctx.arc(pt.x, pt.y, 5, 0, Math.PI * 2);
+                    ctx.fillStyle = p.fail ? RH.danger : RH.red;
+                    ctx.fill();
+                    return true;
+                });
+            }
+
+            function drawBanner() {
+                ctx.fillStyle = RH.black;
+                ctx.font = '700 14px "Red Hat Display", sans-serif';
+                ctx.fillText('OIDC issuer stays https://auth.lan.local:8443', 24, 36);
+                ctx.font = '400 12px "Red Hat Text", sans-serif';
+                if (bothDown()) {
+                    ctx.fillStyle = RH.danger;
+                    ctx.fillText('Complete sites failure — no healthy Keycloak backends', 24, 56);
+                } else if (!siteAUp && siteBUp) {
+                    ctx.fillStyle = RH.danger;
+                    ctx.fillText('Site A dropped — HAProxy routes only to Site B', 24, 56);
+                } else if (siteAUp && !siteBUp) {
+                    ctx.fillStyle = RH.danger;
+                    ctx.fillText('Site B dropped — HAProxy routes only to Site A', 24, 56);
+                } else {
+                    ctx.fillStyle = RH.gray;
+                    ctx.fillText('Both backends healthy — packets alternate sites', 24, 56);
+                }
+            }
+
+            function drawCompleteFailureOverlay() {
+                failPulse += 0.05;
+                const alpha = 0.12 + 0.06 * Math.sin(failPulse);
+                ctx.fillStyle = 'rgba(240, 86, 29, ' + alpha + ')';
+                ctx.fillRect(0, 0, 1200, 480);
+                const bw = 520, bh = 88;
+                const bx = (1200 - bw) / 2, by = 190;
+                ctx.fillStyle = RH.black;
+                roundRect(bx, by, bw, bh, 8);
+                ctx.fill();
+                ctx.fillStyle = RH.danger;
+                ctx.fillRect(bx, by, 8, bh);
+                ctx.fillStyle = RH.white;
+                ctx.font = '700 22px "Red Hat Display", sans-serif';
+                ctx.fillText('Complete sites failure', bx + 24, by + 38);
+                ctx.font = '400 14px "Red Hat Text", sans-serif';
+                ctx.fillStyle = 'rgba(255,255,255,0.9)';
+                ctx.fillText('Auth is unavailable until at least one site recovers', bx + 24, by + 64);
+                ctx.save();
+                ctx.globalAlpha = 0.45;
+                ctx.strokeStyle = RH.danger;
+                ctx.lineWidth = 3;
+                const L = center(nodes.lb);
+                ctx.beginPath();
+                ctx.moveTo(L.x - 40, L.y - 28);
+                ctx.lineTo(L.x + 40, L.y + 28);
+                ctx.moveTo(L.x + 40, L.y - 28);
+                ctx.lineTo(L.x - 40, L.y + 28);
+                ctx.stroke();
+                ctx.restore();
+            }
+
+            function frame() {
+                const slide = canvas.closest('.slide');
+                const active = slide && slide.classList.contains('active');
+                if (active && !lastSlideActive) packets = [];
+                lastSlideActive = active;
+                if (!active) {
+                    raf = requestAnimationFrame(frame);
+                    return;
+                }
+
+                const dpr = window.devicePixelRatio || 1;
+                const rect = canvas.getBoundingClientRect();
+                const w = Math.max(800, Math.floor(rect.width));
+                const h = Math.max(400, Math.floor(rect.height));
+                if (canvas.width !== Math.floor(w * dpr) || canvas.height !== Math.floor(h * dpr)) {
+                    canvas.width = Math.floor(w * dpr);
+                    canvas.height = Math.floor(h * dpr);
+                }
+                ctx.setTransform(dpr * (w / 1200), 0, 0, dpr * (h / 480), 0, 0);
+
+                ctx.clearRect(0, 0, 1200, 480);
+                ctx.fillStyle = RH.light;
+                ctx.fillRect(0, 0, 1200, 480);
+
+                const anyUp = siteAUp || siteBUp;
+                drawLink(nodes.spa, nodes.lb, anyUp || bothDown(), bothDown());
+                drawLink(nodes.lb, nodes.a, siteAUp, !siteAUp);
+                drawLink(nodes.lb, nodes.b, siteBUp, !siteBUp);
+                drawLink(nodes.a, nodes.db, siteAUp, !siteAUp);
+                drawLink(nodes.b, nodes.db, siteBUp, !siteBUp);
+
+                drawNode(nodes.spa, !bothDown());
+                drawNode(nodes.lb, !bothDown());
+                drawNode(nodes.a, siteAUp);
+                drawNode(nodes.b, siteBUp);
+                drawNode(nodes.db, true);
+
+                maybeSpawn();
+                drawPackets();
+                if (bothDown()) drawCompleteFailureOverlay();
+                drawBanner();
+
+                raf = requestAnimationFrame(frame);
+            }
+
+            function updateStatus() {
+                if (bothDown()) {
+                    statusEl.innerHTML = '<strong style="color:#f0561d;">Mode:</strong> complete sites failure · auth unavailable';
+                } else if (!siteAUp && siteBUp) {
+                    statusEl.innerHTML = '<strong>Mode:</strong> Site A DOWN · traffic → Site B only';
+                } else if (siteAUp && !siteBUp) {
+                    statusEl.innerHTML = '<strong>Mode:</strong> Site B DOWN · traffic → Site A only';
+                } else {
+                    statusEl.innerHTML = '<strong>Mode:</strong> both sites healthy · round-robin';
+                }
+            }
+
+            function setState(a, b) {
+                siteAUp = a;
+                siteBUp = b;
+                packets = [];
+                updateStatus();
+            }
+
+            btnDropA.addEventListener('click', () => setState(false, siteBUp));
+            btnDropB.addEventListener('click', () => setState(siteAUp, false));
+            btnDropBoth.addEventListener('click', () => setState(false, false));
+            btnRestore.addEventListener('click', () => setState(true, true));
+
+            updateStatus();
+            raf = requestAnimationFrame(frame);
+        })();
+
+    </script>
+</body>
+</html>

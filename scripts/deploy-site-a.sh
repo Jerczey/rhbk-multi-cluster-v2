@@ -7,12 +7,20 @@ NS=rhbk-mc
 oc apply -f "${ROOT}/manifests/operator/subscription.yaml"
 
 echo "Waiting for Keycloak operator CSV..."
+CSV=""
 for _ in $(seq 1 120); do
-  PHASE=$(oc get csv keycloak-operator.v26.7.0 -n "${NS}" -o jsonpath='{.status.phase}' 2>/dev/null || true)
-  [[ "${PHASE}" == "Succeeded" ]] && break
+  CSV=$(oc get csv -n "${NS}" -o jsonpath='{range .items[?(@.spec.displayName=="Keycloak Operator")]}{.metadata.name}{"\n"}{end}' 2>/dev/null \
+    | grep -E '^keycloak-operator\.v26\.7' | tail -1 || true)
+  if [[ -z "${CSV}" ]]; then
+    CSV=$(oc get csv -n "${NS}" -o name 2>/dev/null | grep keycloak-operator | head -1 | sed 's|.*/||' || true)
+  fi
+  if [[ -n "${CSV}" ]]; then
+    PHASE=$(oc get csv "${CSV}" -n "${NS}" -o jsonpath='{.status.phase}' 2>/dev/null || true)
+    [[ "${PHASE}" == "Succeeded" ]] && break
+  fi
   sleep 5
 done
-oc get csv keycloak-operator.v26.7.0 -n "${NS}"
+oc get csv -n "${NS}" | grep -i keycloak || oc get csv -n "${NS}"
 
 if [[ ! -f "${ROOT}/secrets/tls.crt" ]]; then
   bash "${ROOT}/scripts/gen-tls-secret.sh"
