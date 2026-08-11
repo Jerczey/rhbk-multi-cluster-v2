@@ -8,20 +8,43 @@
     "standardFlowEnabled": true,
     "redirectUris": [
       "http://localhost:8080/*",
-      "http://192.168.0.114:8080/*",
-      "https://192.168.0.114:8444/*",
+      "http://127.0.0.1:8080/*",
       "https://auth.lan.local:8444/*"
     ],
     "webOrigins": [
       "http://localhost:8080",
-      "http://192.168.0.114:8080",
-      "https://192.168.0.114:8444",
+      "http://127.0.0.1:8080",
       "https://auth.lan.local:8444"
     ],
     "attributes": {
       "pkce.code.challenge.method": "S256"
     }
   },
+  "additionalClients": [
+    {
+      "clientId": "poc-load",
+      "name": "PoC Gatling load client",
+      "enabled": true,
+      "publicClient": false,
+      "secret": "poc-load-secret",
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": false,
+      "redirectUris": [
+        "http://localhost:8080/*",
+        "http://127.0.0.1:8080/*"
+      ],
+      "webOrigins": ["+"]
+    },
+    {
+      "clientId": "poc-api",
+      "name": "PoC protected API",
+      "enabled": true,
+      "publicClient": false,
+      "bearerOnly": true,
+      "protocol": "openid-connect"
+    }
+  ],
   "roles": [
     { "name": "user", "description": "User privileges" },
     { "name": "admin", "description": "Administrator privileges" }

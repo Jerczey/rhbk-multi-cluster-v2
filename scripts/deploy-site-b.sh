@@ -61,4 +61,4 @@ oc -n "${NS}" wait --for=condition=Ready keycloaks.k8s.keycloak.org/keycloak-b -
 oc -n "${NS}" get keycloak,pods,route
 echo "Site B URL: https://${HOSTNAME}"
 echo "LB check:   curl -k https://${HOSTNAME}/lb-check"
-echo "Prove DB path: oc run pgcheck --rm -i --restart=Never --image=postgres:17-alpine -- env PGPASSWORD='KeycloakPoC2026!' psql -h 192.168.0.114 -U keycloak -d keycloak -c 'SELECT 1'" # notsecret
+echo "Prove DB path: oc run pgcheck --rm -i --restart=Never --image=registry.access.redhat.com/hi/postgresql:18 -- env PGPASSWORD='KeycloakPoC2026!' psql -h 192.168.0.114 -U keycloak -d keycloak -c 'SELECT 1'" # notsecret

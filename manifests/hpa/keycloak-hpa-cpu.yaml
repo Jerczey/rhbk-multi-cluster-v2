@@ -1,0 +1,22 @@
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: keycloak-hpa
+  namespace: rhbk-mc
+  labels:
+    app: keycloak
+    lab: hpa
+spec:
+  scaleTargetRef:
+    apiVersion: k8s.keycloak.org/v2beta1
+    kind: Keycloak
+    name: keycloak
+  minReplicas: 1
+  maxReplicas: 4
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 80

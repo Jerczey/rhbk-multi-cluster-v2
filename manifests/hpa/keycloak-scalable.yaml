@@ -1,24 +1,27 @@
-apiVersion: k8s.keycloak.org/v2alpha1
+# HPA lab: scalable Keycloak CR (v2beta1) with stateless + metrics.
+# Apply after base secrets exist in rhbk-mc. JDBC host uses PRIMARY_HOST from postgres.env at apply time
+# or patch db.url to match your Linux host LAN IP.
+apiVersion: k8s.keycloak.org/v2beta1
 kind: Keycloak
 metadata:
-  name: keycloak-b
+  name: keycloak
   namespace: rhbk-mc
   labels:
     app: keycloak
-    site: site-b
+    site: site-a
+    lab: hpa
 spec:
-  instances: 1
-  image: quay.io/keycloak/keycloak:26.7.0
-  startOptimized: false
+  instances: 2
+  image: default-route-openshift-image-registry.apps-crc.testing/rhbk-mc/keycloak:26.7.0-optimized
+  startOptimized: true
   hostname:
-    # Must match Site A — single OIDC issuer for multi-site SPA
     hostname: https://auth.lan.local:8443
     strict: false
   http:
     tlsSecret: keycloak-tls-secret
   db:
     vendor: postgres
-    url: jdbc:postgresql://192.168.0.114:5432/keycloak
+    url: jdbc:postgresql://10.96.113.192:5432/keycloak
     poolMinSize: 5
     poolInitialSize: 5
     poolMaxSize: 15
@@ -33,7 +36,7 @@ spec:
       - stateless
   additionalOptions:
     - name: spi-cache-embedded--default--cluster-name
-      value: cluster-b
+      value: cluster-a
     - name: log-console-output
       value: json
     - name: metrics-enabled

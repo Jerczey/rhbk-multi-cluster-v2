@@ -20,7 +20,7 @@ podman run -d --name "${NAME}" --restart=unless-stopped \
   --network=host \
   -v "${ROOT}/lb/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:Z" \
   -v "${ROOT}/secrets/keycloak.pem:/etc/haproxy/certs/keycloak.pem:Z,ro" \
-  docker.io/library/haproxy:2.9
+  registry.access.redhat.com/hi/haproxy:3
 
 echo "HAProxy listening on https://${LISTEN_HOST}:8443"
 echo "Test: curl -sk https://auth.lan.local:8443/lb-check"

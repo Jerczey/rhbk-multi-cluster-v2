@@ -27,6 +27,33 @@ npm start
 
 `npm start` serves HTTP on `:8080` and HTTPS on `:8444` using `secrets/tls.crt` / `secrets/tls.key` (lab cert). Open firewall `8444/tcp` on Linux for Windows access.
 
+## Protected API demo
+
+The PoC stack now includes a protected backend route:
+
+- `GET /api/protected/profile`
+- Requires `Authorization: Bearer <access_token>`
+- Validates JWT issuer against `https://auth.lan.local:8443/realms/poc-realm`
+
+In the SPA UI, use **Call protected API** after login to validate end-to-end auth to a protected resource.
+
+## Load testing realm data
+
+Additional Keycloak clients are configured for load testing:
+
+- `poc-load` (confidential, benchmark client)
+- `poc-api` (audience/resource-server use)
+
+Seed benchmark users in `poc-realm`:
+
+```bash
+cd apps/poc-spa
+npm run setup-realm
+npm run seed-load-users -- --count 1000
+```
+
+This creates users `user-0` through `user-999` with passwords `user-N-password`.
+
 ### Keycloak client redirect URIs
 
 Client `poc-spa` must allow:

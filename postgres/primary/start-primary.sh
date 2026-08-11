@@ -10,24 +10,30 @@ CONTAINER_NAME="pg-primary-site-a"
 mkdir -p "${DATA_DIR}"
 
 copy_configs() {
-  podman run --rm \
-    -v "${DATA_DIR}:/data:Z" \
+  podman run --rm --user root \
+    -v "${DATA_DIR}:/var/lib/postgresql/data:Z" \
     -v "${ROOT}/postgres/primary/postgresql.conf:/cfg/postgresql.conf:Z" \
     -v "${ROOT}/postgres/primary/pg_hba.conf:/cfg/pg_hba.conf:Z" \
     "${POSTGRES_IMAGE}" \
-    sh -c 'cp /cfg/postgresql.conf /data/postgresql.conf && cp /cfg/pg_hba.conf /data/pg_hba.conf && chown -R postgres:postgres /data && chmod 700 /data'
+    sh -c 'cp /cfg/postgresql.conf /var/lib/postgresql/data/postgresql.conf && cp /cfg/pg_hba.conf /var/lib/postgresql/data/pg_hba.conf && chown -R postgres:postgres /var/lib/postgresql/data && chmod 700 /var/lib/postgresql/data'
 }
 
 if podman container exists "${CONTAINER_NAME}" 2>/dev/null; then
-  echo "Stopping existing ${CONTAINER_NAME}..."
+  if podman exec "${CONTAINER_NAME}" pg_isready -U "${POSTGRES_USER}" -d "${POSTGRES_DB}" >/dev/null 2>&1; then
+    echo "Primary already running and healthy (${CONTAINER_NAME}). Skipping recreate."
+    podman exec "${CONTAINER_NAME}" psql -U "${POSTGRES_USER}" -d "${POSTGRES_DB}" -c \
+      "SELECT application_name, state, sync_state FROM pg_stat_replication;" 2>/dev/null || true
+    exit 0
+  fi
+  echo "Stopping unhealthy ${CONTAINER_NAME}..."
   podman stop "${CONTAINER_NAME}" >/dev/null 2>&1 || true
   podman rm "${CONTAINER_NAME}" >/dev/null 2>&1 || true
 fi
 
-# Detect initialized data dir via helper (host may lack permission due to container UID)
+# Detect initialized data dir (host may lack permission to read container-owned files)
 initialized=false
-if podman run --rm -v "${DATA_DIR}:/data:Z" "${POSTGRES_IMAGE}" \
-    test -f /data/PG_VERSION 2>/dev/null; then
+if podman run --rm -v "${DATA_DIR}:/var/lib/postgresql/data:Z" "${POSTGRES_IMAGE}" \
+    test -f /var/lib/postgresql/data/PG_VERSION 2>/dev/null; then
   initialized=true
 fi
 

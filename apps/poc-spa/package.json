@@ -4,11 +4,13 @@
   "private": true,
   "scripts": {
     "start": "node app.js",
-    "setup-realm": "NODE_TLS_REJECT_UNAUTHORIZED=0 node scripts/setup-realm.js"
+    "setup-realm": "NODE_TLS_REJECT_UNAUTHORIZED=0 node scripts/setup-realm.js",
+    "seed-load-users": "NODE_TLS_REJECT_UNAUTHORIZED=0 node scripts/seed-load-users.js"
   },
   "dependencies": {
     "@keycloak/keycloak-admin-client": "^26.0.5",
     "express": "^4.21.2",
+    "jose": "^5.9.6",
     "keycloak-js": "^26.0.5"
   }
 }

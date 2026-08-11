@@ -13,6 +13,9 @@ postgres/standby/data/
 # Node
 node_modules/
 
+# HPA / benchmark artifacts
+benchmark-results/
+
 # OS / editor
 .DS_Store
 Thumbs.db

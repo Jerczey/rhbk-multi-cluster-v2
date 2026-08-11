@@ -15,6 +15,31 @@ const repoRoot = resolve(root, '../..');
 const cfg = JSON.parse(readFileSync(resolve(root, 'config/config.json'), 'utf8'));
 const desired = JSON.parse(readFileSync(resolve(root, 'config/realm-clients.json'), 'utf8'));
 
+function lanHost() {
+  const pgEnv = resolve(repoRoot, 'secrets/postgres.env');
+  if (existsSync(pgEnv)) {
+    const m = readFileSync(pgEnv, 'utf8').match(/^PRIMARY_HOST=(.*)$/m);
+    if (m) return m[1].trim();
+  }
+  return process.env.PRIMARY_HOST || '127.0.0.1';
+}
+
+function mergeRedirectUris(uris) {
+  const host = lanHost();
+  const extra = [`http://${host}:8080/*`, `https://${host}:8444/*`];
+  return [...new Set([...(uris || []), ...extra])];
+}
+
+function mergeWebOrigins(origins) {
+  const host = lanHost();
+  const extra = [
+    'http://localhost:8080',
+    `http://${host}:8080`,
+    'https://auth.lan.local:8444',
+  ];
+  return [...new Set([...(origins || []), ...extra])];
+}
+
 function loadAdminEnv() {
   const out = {};
   if (process.env.KC_ADMIN_USER) out.user = process.env.KC_ADMIN_USER.trim();
@@ -62,13 +87,52 @@ for (const role of desired.roles) {
 }
 
 const clients = await admin.clients.find({ clientId: desired.client.clientId });
+const spaClient = {
+  ...desired.client,
+  redirectUris: mergeRedirectUris(desired.client.redirectUris),
+  webOrigins: mergeWebOrigins(desired.client.webOrigins),
+};
 if (clients.length === 0) {
-  await admin.clients.create(desired.client);
-  console.log(`Created client ${desired.client.clientId}`);
+  await admin.clients.create(spaClient);
+  console.log(`Created client ${spaClient.clientId}`);
 } else {
   const id = clients[0].id;
-  await admin.clients.update({ id }, { ...desired.client, id });
-  console.log(`Updated client ${desired.client.clientId}`);
+  await admin.clients.update({ id }, { ...spaClient, id });
+  console.log(`Updated client ${spaClient.clientId}`);
+}
+
+async function upsertClient(def) {
+  const redirectUris = def.redirectUris ? mergeRedirectUris(def.redirectUris) : undefined;
+  const webOrigins =
+    def.webOrigins?.[0] === '+'
+      ? def.webOrigins
+      : def.webOrigins
+        ? mergeWebOrigins(def.webOrigins)
+        : undefined;
+  const payload = {
+    ...def,
+    ...(redirectUris ? { redirectUris } : {}),
+    ...(webOrigins ? { webOrigins } : {}),
+  };
+  delete payload.secret;
+  const found = await admin.clients.find({ clientId: def.clientId });
+  if (found.length === 0) {
+    await admin.clients.create(payload);
+    console.log(`Created client ${def.clientId}`);
+  } else {
+    await admin.clients.update({ id: found[0].id }, { ...payload, id: found[0].id });
+    console.log(`Updated client ${def.clientId}`);
+  }
+  if (def.secret) {
+    const cid = found[0]?.id || (await admin.clients.find({ clientId: def.clientId }))[0]?.id;
+    if (cid) {
+      await admin.clients.update({ id: cid }, { secret: def.secret });
+    }
+  }
+}
+
+for (const extra of desired.additionalClients || []) {
+  await upsertClient(extra);
 }
 
 for (const user of desired.users) {

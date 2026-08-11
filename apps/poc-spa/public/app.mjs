@@ -19,6 +19,7 @@ const els = {
   showIdToken: document.getElementById("showIdToken"),
   showAccessToken: document.getElementById("showAccessToken"),
   showMyAccount: document.getElementById("showMyAccount"),
+  callProtectedApi: document.getElementById("callProtectedApi"),
   checkHealth: document.getElementById("checkHealth"),
   healthChip: document.getElementById("healthChip"),
   recoveryHint: document.getElementById("recoveryHint"),
@@ -81,6 +82,7 @@ function showProfile() {
   els.showIdToken.hidden = false;
   els.showAccessToken.hidden = false;
   els.showMyAccount.hidden = false;
+  els.callProtectedApi.hidden = false;
   setChip(els.statusChip, "ok", "Signed in");
 }
 
@@ -93,6 +95,7 @@ function showLoggedOut() {
   els.showIdToken.hidden = true;
   els.showAccessToken.hidden = true;
   els.showMyAccount.hidden = true;
+  els.callProtectedApi.hidden = true;
   setChip(els.statusChip, "idle", "Signed out");
   els.recoveryHint.textContent = "Log in, then run a site failover and use Refresh token.";
 }
@@ -108,6 +111,24 @@ els.logout.addEventListener("click", () => keycloak.logout({ redirectUri: window
 els.showIdToken.addEventListener("click", () => showToken("ID token", keycloak.idTokenParsed));
 els.showAccessToken.addEventListener("click", () => showToken("Access token", keycloak.tokenParsed));
 els.showMyAccount.addEventListener("click", () => keycloak.accountManagement());
+els.callProtectedApi.addEventListener("click", async () => {
+  try {
+    const res = await fetch("/api/protected/profile", {
+      headers: { Authorization: `Bearer ${keycloak.token}` },
+    });
+    const body = await res.json();
+    if (!res.ok) {
+      showToken("Protected API error", body);
+      setChip(els.statusChip, "err", "API call failed");
+      return;
+    }
+    showToken("Protected API profile", body);
+    setChip(els.statusChip, "ok", "Protected API OK");
+  } catch (err) {
+    setChip(els.statusChip, "err", "API unreachable");
+    console.error(err);
+  }
+});
 els.hideToken.addEventListener("click", () => {
   els.tokenPanel.hidden = true;
 });
