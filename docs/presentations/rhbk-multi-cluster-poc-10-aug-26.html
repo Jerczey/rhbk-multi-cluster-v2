@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RHBK multi-cluster v2 PoC — Aug 10, 2026</title>
+    <title>RHBK multi-cluster v2 PoC — Aug 11, 2026</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Red+Hat+Display:wght@400;700&family=Red+Hat+Text:wght@400;700&family=Red+Hat+Mono:wght@400;700&display=swap" rel="stylesheet">
@@ -627,7 +627,7 @@
                 <div class="title-content">
                     <h1 class="main-title">RHBK multi-cluster v2 PoC</h1>
                     <p class="subtitle">Stateless Keycloak across two CRC sites</p>
-                    <p class="event-info">Dual CRC · Podman Postgres · HAProxy · recovery SPA · Aug 2026</p>
+                    <p class="event-info">Dual CRC · hardened images · HPA lab · benchmark and startup A/B · Aug 2026</p>
                 </div>
                 <div class="presenters">
                     <div class="presenter">
@@ -652,7 +652,9 @@
                 <ul class="challenge-list">
                     <li><strong>Problem</strong> — Why multi-site Keycloak used to need stickiness or Infinispan XSite</li>
                     <li><strong>Architecture</strong> — Shared DB + <code>stateless</code> + one public issuer</li>
-                    <li><strong>Lab build</strong> — Dual CRC, Podman Postgres sync, LAN HAProxy</li>
+                    <li><strong>Lab build</strong> — Dual CRC, hardened Postgres/HAProxy images, LAN HAProxy</li>
+                    <li><strong>HPA and load</strong> — CPU HPA (`1` to `4` pods), ramp to `1000` users, direct and HAProxy paths</li>
+                    <li><strong>Startup A/B</strong> — Non-optimized vs optimized image boot delta and scale-out impact</li>
                     <li><strong>Failover demo</strong> — Drop Site A, Site B, or both (complete sites failure)</li>
                     <li><strong>DR questions</strong> — RTO and RPO for IdP failover vs database promote</li>
                     <li><strong>Takeaways</strong> — What to carry into real deployments</li>
@@ -666,27 +668,27 @@
                 </svg>
                 <h1>PoC outcomes</h1>
             </div>
-                <h2>Verified on the LAN lab (Jul 2026)</h2>
+                <h2>Verified on the LAN lab (Aug 2026 update)</h2>
                 <div class="metric-grid">
                     <div class="metric-card">
-                        <div class="value">2</div>
-                        <div class="label">CRC sites · cluster-a / cluster-b</div>
+                        <div class="value">1-4</div>
+                        <div class="label">CPU HPA range on Keycloak (min to max pods)</div>
                     </div>
                     <div class="metric-card">
-                        <div class="value">26.7</div>
-                        <div class="label">Keycloak with stateless preview</div>
+                        <div class="value">1000</div>
+                        <div class="label">Peak concurrent users in matrix ramp</div>
                     </div>
                     <div class="metric-card">
-                        <div class="value">1</div>
-                        <div class="label">Public issuer · auth.lan.local</div>
+                        <div class="value">-27.8%</div>
+                        <div class="label">Startup time with optimized image (A/B)</div>
                     </div>
                     <div class="metric-card">
-                        <div class="value">UP</div>
-                        <div class="label">HAProxy /lb-check health signal</div>
+                        <div class="value">RH</div>
+                        <div class="label">Hardened Postgres and HAProxy images adopted</div>
                     </div>
                 </div>
                 <div class="dark-panel" style="margin-top:18px;padding:18px 22px;">
-                    <p style="margin:0;font-size:1.05em;color:#fff;"><strong style="color:#EE0000;">Proven drill:</strong> Site A Keycloak / CRC stopped on Linux — SPA login and token refresh continued via Site B. Issuer stayed <span style="font-family:'Red Hat Mono',monospace;font-size:0.9em;">https://auth.lan.local:8443/realms/poc-realm</span>.</p>
+                    <p style="margin:0;font-size:1.05em;color:#fff;"><strong style="color:#EE0000;">New evidence:</strong> startup A/B measured <span style="font-family:'Red Hat Mono',monospace;font-size:0.9em;">36s (non-optimized)</span> vs <span style="font-family:'Red Hat Mono',monospace;font-size:0.9em;">26s (optimized)</span>, a 10s gain for scale-out bursts.</p>
                 </div>
             </div>
             <div class="slide">
@@ -707,12 +709,12 @@
                     <div class="tech-tile">
                         <div class="tech-layer">Data</div>
                         <div class="tech-name">Postgres 17</div>
-                        <div class="tech-detail">Podman primary on Linux · sync standby on Windows · both Keycloaks JDBC to primary</div>
+                        <div class="tech-detail">Hardened image (`registry.access.redhat.com/hi/postgresql:17`) · primary on Linux · sync standby on Windows</div>
                     </div>
                     <div class="tech-tile">
                         <div class="tech-layer">Edge</div>
                         <div class="tech-name">HAProxy</div>
-                        <div class="tech-detail">auth.lan.local:8443 · GET /lb-check expects UP · SNI to both CRC routers</div>
+                        <div class="tech-detail">Hardened image (`registry.access.redhat.com/hi/haproxy:3`) · auth.lan.local:8443 · /lb-check based routing</div>
                     </div>
                     <div class="tech-tile">
                         <div class="tech-layer">Clients</div>
@@ -730,6 +732,7 @@
                         <div class="tech-detail">Sync standby is database DR — Keycloak site failover is automatic via LB</div>
                     </div>
                 </div>
+                <p style="margin-top:10px;color:#595959;font-size:0.85em;">Benchmark artifacts are kept local in <code>benchmark-results/</code> and excluded from git history.</p>
             </div>
             <div class="slide">
                 <div class="slide-header">
@@ -1000,6 +1003,8 @@
                             <li><strong>Runs on</strong> Linux host (HTTP :8080, HTTPS :8444 for LAN)</li>
                             <li><strong>Users</strong> alice/alice · bob/bob on poc-realm</li>
                             <li><strong>Health</strong> same-origin /api/lb-check proxy (avoids browser TLS/CORS traps)</li>
+                            <li><strong>Protected API</strong> <code>/api/protected/profile</code> validates JWT (issuer and claims)</li>
+                            <li><strong>Load data</strong> seeding script creates <code>user-0</code> through <code>user-999</code></li>
                         </ul>
                     </div>
                     <div class="col">
@@ -1035,6 +1040,11 @@ npm start
                         <div class="rec-title">Health check is the cutover signal</div>
                         <div class="rec-detail">Probe GET /lb-check and expect UP. That is how a dead site leaves rotation without sticky sessions.</div>
                         <div class="rec-action">Action: wire LB checks before app traffic</div>
+                    </div>
+                    <div class="rec-card">
+                        <div class="rec-title">Use optimized image for HPA scale-out</div>
+                        <div class="rec-detail">Clean A/B showed 36s to 26s startup, improving burst response with `minReplicas: 1`.</div>
+                        <div class="rec-action">Action: keep prebuilt optimized image and `startOptimized: true`</div>
                     </div>
                     <div class="rec-card">
                         <div class="rec-title">Separate IdP RTO from DB RPO</div>
@@ -1359,6 +1369,12 @@ npm start
                 } else {
                     statusEl.innerHTML = '<strong>Mode:</strong> both sites healthy · round-robin';
                 }
+                updateToggleLabels();
+            }
+
+            function updateToggleLabels() {
+                btnDropA.textContent = siteAUp ? 'Drop Site A' : 'Restore Site A';
+                btnDropB.textContent = siteBUp ? 'Drop Site B' : 'Restore Site B';
             }
 
             function setState(a, b) {
@@ -1368,8 +1384,8 @@ npm start
                 updateStatus();
             }
 
-            btnDropA.addEventListener('click', () => setState(false, siteBUp));
-            btnDropB.addEventListener('click', () => setState(siteAUp, false));
+            btnDropA.addEventListener('click', () => setState(!siteAUp, siteBUp));
+            btnDropB.addEventListener('click', () => setState(siteAUp, !siteBUp));
             btnDropBoth.addEventListener('click', () => setState(false, false));
             btnRestore.addEventListener('click', () => setState(true, true));
 
