@@ -33,15 +33,15 @@ Official guides used (see `docs/`):
 **Namespace / images (both CRCs):** `rhbk-mc`, community Keycloak Operator **26.7.0**, image `quay.io/keycloak/keycloak:26.7.0`  
 (RHBK Operator catalog tops out at 26.6.x; `stateless` / multi-cluster v2 needs 26.7+.)
 
-```mermaid
-flowchart LR
-  SPA[PoC SPA Linux HTTPS :8444] -->|"OIDC auth.lan.local:8443"| LB[HAProxy :8443 on Linux]
-  LB --> KCA[Keycloak cluster-a Linux CRC]
-  LB --> KCB[Keycloak cluster-b Windows CRC]
-  KCA --> PGA[Postgres PRIMARY Linux :5432]
-  KCB --> PGA
-  PGA -->|sync streaming| PGB[Postgres STANDBY Windows]
-```
+### Architecture
+
+[![Multi-cluster failover canvas — click for interactive demo](docs/presentations/failover-canvas-preview.png)](https://htmlpreview.github.io/?https://raw.githubusercontent.com/Jerczey/rhbk-multi-cluster-v2/main/docs/presentations/failover-canvas-demo.html)
+
+**Interactive failover canvas** — drop Site A, Site B, or both; animated packets show how HAProxy routes OIDC traffic.  
+- **In browser (GitHub):** [open interactive demo](https://htmlpreview.github.io/?https://raw.githubusercontent.com/Jerczey/rhbk-multi-cluster-v2/main/docs/presentations/failover-canvas-demo.html)  
+- **From a clone:** open `docs/presentations/failover-canvas-demo.html` in a browser (or `xdg-open docs/presentations/failover-canvas-demo.html`)
+
+PoC SPA (Linux HTTPS `:8444`) → HAProxy (`auth.lan.local:8443`) → Keycloak `cluster-a` (Linux CRC) / `cluster-b` (Windows CRC) → Postgres primary (Linux `:5432`) with sync standby (Windows).
 
 ---
 
