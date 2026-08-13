@@ -176,6 +176,9 @@ oc get secret keycloak-initial-admin -n rhbk-mc -o jsonpath='{.data.password}' |
 | `postgres/standby/start-standby.ps1` | Windows | Standby via named volume |
 | `postgres/standby/configure-standby.sh` | Windows | Standby helpers |
 | `scripts/enable-sync-replication.sh` | Linux | Enable sync wait for `site_b_standby` |
+| `scripts/apply-hpa-lab.sh` | Linux | HPA lab Keycloak CR + CPU/memory HPA |
+| `scripts/build-keycloak-optimized-image.sh` | Linux | Build/push optimized image for `startOptimized: true` |
+| `scripts/run-hpa-benchmark.sh` | Linux | keycloak-benchmark Gatling run (see `docs/HPA-BENCHMARK.md`) |
 | `scripts/deploy-site-a.sh` | Linux | Operator + Keycloak `cluster-a` |
 | `scripts/deploy-site-b.sh` | Windows | Operator + Keycloak `cluster-b` |
 | `scripts/apply-haproxy-site-b.sh` | Linux | Point HAProxy `site_b` at Windows CRC |
