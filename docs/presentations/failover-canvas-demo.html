@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RHBK multi-cluster failover canvas</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Red+Hat+Display:wght@400;700&family=Red+Hat+Text:wght@400;700&family=Red+Hat+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --rh-red: #EE0000;
+            --rh-black: #151515;
+            --rh-gray-dark: #595959;
+            --rh-gray-light: #f5f5f5;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            font-family: 'Red Hat Text', 'Helvetica Neue', Arial, sans-serif;
+            background: #1a1a1a;
+            color: var(--rh-black);
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+        }
+
+        .page {
+            width: 100%;
+            max-width: 1200px;
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 20px 80px rgba(0, 0, 0, 0.35);
+            padding: 28px 32px 24px;
+        }
+
+        h1 {
+            font-family: 'Red Hat Display', sans-serif;
+            font-size: 1.5em;
+            color: var(--rh-red);
+            margin: 0 0 4px;
+        }
+
+        .subtitle {
+            color: var(--rh-gray-dark);
+            margin: 0 0 18px;
+            font-size: 0.95em;
+        }
+
+        .failover-wrap {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .failover-controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .failover-btn {
+            font-family: 'Red Hat Text', sans-serif;
+            font-size: 0.9em;
+            font-weight: 700;
+            border: none;
+            border-radius: 4px;
+            padding: 10px 16px;
+            cursor: pointer;
+            background: var(--rh-red);
+            color: #fff;
+        }
+
+        .failover-btn.secondary { background: var(--rh-black); }
+        .failover-btn.danger { background: #f0561d; }
+        .failover-btn:hover { filter: brightness(0.92); }
+
+        .failover-status {
+            font-family: 'Red Hat Mono', monospace;
+            font-size: 0.85em;
+            color: var(--rh-gray-dark);
+        }
+
+        .failover-status strong { color: var(--rh-black); }
+
+        #failoverCanvas {
+            width: 100%;
+            min-height: 480px;
+            height: 52vh;
+            max-height: 560px;
+            background: var(--rh-gray-light);
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            display: block;
+        }
+
+        .failover-caption {
+            font-size: 0.85em;
+            color: var(--rh-gray-dark);
+            margin: 0;
+        }
+    </style>
+</head>
+<body>
+    <main class="page">
+        <h1>Multi-cluster failover canvas</h1>
+        <p class="subtitle">SPA → HAProxy → Site A / Site B → shared Postgres. Toggle sites to see traffic routing.</p>
+        <div class="failover-wrap">
+            <div class="failover-controls">
+                <button type="button" class="failover-btn" id="btnDropSiteA">Drop Site A</button>
+                <button type="button" class="failover-btn" id="btnDropSiteB">Drop Site B</button>
+                <button type="button" class="failover-btn danger" id="btnDropBoth">Drop both sites</button>
+                <button type="button" class="failover-btn secondary" id="btnRestore">Restore both sites</button>
+                <span class="failover-status" id="failoverStatus"><strong>Mode:</strong> both sites healthy · round-robin</span>
+            </div>
+            <canvas id="failoverCanvas" width="1200" height="480" aria-label="Animated failover diagram from SPA through HAProxy to Site A and Site B"></canvas>
+            <p class="failover-caption">Packets only reach healthy backends. One site down = IdP continues on the other. Both down = complete sites failure (no auth until a site recovers).</p>
+        </div>
+    </main>
+
+    <script>
+        (function () {
+            const canvas = document.getElementById('failoverCanvas');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            const statusEl = document.getElementById('failoverStatus');
+            const btnDropA = document.getElementById('btnDropSiteA');
+            const btnDropB = document.getElementById('btnDropSiteB');
+            const btnDropBoth = document.getElementById('btnDropBoth');
+            const btnRestore = document.getElementById('btnRestore');
+
+            const RH = {
+                red: '#EE0000',
+                black: '#151515',
+                white: '#FFFFFF',
+                gray: '#595959',
+                light: '#f5f5f5',
+                success: '#3d7317',
+                danger: '#f0561d',
+                info: '#0066cc'
+            };
+
+            let siteAUp = true;
+            let siteBUp = true;
+            let packets = [];
+            let failPulse = 0;
+
+            const nodes = {
+                spa:  { x: 110, y: 240, w: 140, h: 70, label: 'PoC SPA', sub: ':8444' },
+                lb:   { x: 400, y: 240, w: 160, h: 70, label: 'HAProxy', sub: 'auth.lan.local' },
+                a:    { x: 760, y: 120, w: 170, h: 80, label: 'Site A', sub: 'cluster-a · Linux' },
+                b:    { x: 760, y: 320, w: 170, h: 80, label: 'Site B', sub: 'cluster-b · Windows' },
+                db:   { x: 1040, y: 240, w: 130, h: 70, label: 'Postgres', sub: 'shared primary' }
+            };
+
+            function bothDown() { return !siteAUp && !siteBUp; }
+            function center(n) { return { x: n.x + n.w / 2, y: n.y + n.h / 2 }; }
+
+            function roundRect(x, y, w, h, r) {
+                ctx.beginPath();
+                ctx.moveTo(x + r, y);
+                ctx.arcTo(x + w, y, x + w, y + h, r);
+                ctx.arcTo(x + w, y + h, x, y + h, r);
+                ctx.arcTo(x, y + h, x, y, r);
+                ctx.arcTo(x, y, x + w, y, r);
+                ctx.closePath();
+            }
+
+            function drawNode(n, up) {
+                ctx.save();
+                if (!up) ctx.globalAlpha = 0.45;
+                ctx.fillStyle = RH.white;
+                ctx.strokeStyle = up ? RH.black : RH.danger;
+                ctx.lineWidth = 2;
+                roundRect(n.x, n.y, n.w, n.h, 8);
+                ctx.fill();
+                ctx.stroke();
+                ctx.fillStyle = up ? RH.red : RH.danger;
+                ctx.fillRect(n.x, n.y, 6, n.h);
+                ctx.fillStyle = RH.black;
+                ctx.font = '700 15px "Red Hat Display", sans-serif';
+                ctx.fillText(n.label, n.x + 16, n.y + 30);
+                ctx.fillStyle = RH.gray;
+                ctx.font = '400 12px "Red Hat Text", sans-serif';
+                ctx.fillText(n.sub, n.x + 16, n.y + 50);
+                const pill = up ? 'UP' : 'DOWN';
+                const pw = 48;
+                ctx.fillStyle = up ? RH.success : RH.danger;
+                roundRect(n.x + n.w - pw - 10, n.y + 10, pw, 20, 4);
+                ctx.fill();
+                ctx.fillStyle = RH.white;
+                ctx.font = '700 11px "Red Hat Text", sans-serif';
+                ctx.fillText(pill, n.x + n.w - pw - 2, n.y + 24);
+                ctx.restore();
+            }
+
+            function drawLink(a, b, active, dashed) {
+                const A = center(a), B = center(b);
+                ctx.save();
+                ctx.beginPath();
+                ctx.moveTo(A.x, A.y);
+                ctx.lineTo(B.x, B.y);
+                ctx.strokeStyle = active ? RH.info : '#c8c8c8';
+                ctx.lineWidth = active ? 3 : 1.5;
+                if (dashed) ctx.setLineDash([6, 6]);
+                ctx.stroke();
+                ctx.restore();
+            }
+
+            function spawnPacket(path, fail) {
+                packets.push({ path, u: 0, speed: fail ? 0.02 : (0.012 + Math.random() * 0.008), fail: !!fail });
+            }
+
+            function maybeSpawn() {
+                if (bothDown()) {
+                    if (Math.random() > 0.12) return;
+                    spawnPacket([
+                        { x: center(nodes.spa).x, y: center(nodes.spa).y },
+                        { x: center(nodes.lb).x, y: center(nodes.lb).y }
+                    ], true);
+                    return;
+                }
+                if (Math.random() > 0.08) return;
+                const path = [
+                    { x: center(nodes.spa).x, y: center(nodes.spa).y },
+                    { x: center(nodes.lb).x, y: center(nodes.lb).y }
+                ];
+                const targets = [];
+                if (siteAUp) targets.push(nodes.a);
+                if (siteBUp) targets.push(nodes.b);
+                if (!targets.length) return;
+                const tgt = targets[Math.floor(Math.random() * targets.length)];
+                path.push({ x: center(tgt).x, y: center(tgt).y });
+                path.push({ x: center(nodes.db).x, y: center(nodes.db).y });
+                spawnPacket(path, false);
+            }
+
+            function pointOnPath(path, u) {
+                const segs = path.length - 1;
+                const scaled = u * segs;
+                const i = Math.min(Math.floor(scaled), segs - 1);
+                const local = scaled - i;
+                const a = path[i], b = path[i + 1];
+                return { x: a.x + (b.x - a.x) * local, y: a.y + (b.y - a.y) * local };
+            }
+
+            function drawPackets() {
+                packets = packets.filter(p => {
+                    p.u += p.speed;
+                    if (p.u >= 1) {
+                        if (p.fail) {
+                            const pt = pointOnPath(p.path, 1);
+                            ctx.strokeStyle = RH.danger;
+                            ctx.lineWidth = 3;
+                            ctx.beginPath();
+                            ctx.moveTo(pt.x - 8, pt.y - 8);
+                            ctx.lineTo(pt.x + 8, pt.y + 8);
+                            ctx.moveTo(pt.x + 8, pt.y - 8);
+                            ctx.lineTo(pt.x - 8, pt.y + 8);
+                            ctx.stroke();
+                        }
+                        return false;
+                    }
+                    const pt = pointOnPath(p.path, p.u);
+                    ctx.beginPath();
+                    ctx.arc(pt.x, pt.y, 5, 0, Math.PI * 2);
+                    ctx.fillStyle = p.fail ? RH.danger : RH.red;
+                    ctx.fill();
+                    return true;
+                });
+            }
+
+            function drawBanner() {
+                ctx.fillStyle = RH.black;
+                ctx.font = '700 14px "Red Hat Display", sans-serif';
+                ctx.fillText('OIDC issuer stays https://auth.lan.local:8443', 24, 36);
+                ctx.font = '400 12px "Red Hat Text", sans-serif';
+                if (bothDown()) {
+                    ctx.fillStyle = RH.danger;
+                    ctx.fillText('Complete sites failure — no healthy Keycloak backends', 24, 56);
+                } else if (!siteAUp && siteBUp) {
+                    ctx.fillStyle = RH.danger;
+                    ctx.fillText('Site A dropped — HAProxy routes only to Site B', 24, 56);
+                } else if (siteAUp && !siteBUp) {
+                    ctx.fillStyle = RH.danger;
+                    ctx.fillText('Site B dropped — HAProxy routes only to Site A', 24, 56);
+                } else {
+                    ctx.fillStyle = RH.gray;
+                    ctx.fillText('Both backends healthy — packets alternate sites', 24, 56);
+                }
+            }
+
+            function drawCompleteFailureOverlay() {
+                failPulse += 0.05;
+                const alpha = 0.12 + 0.06 * Math.sin(failPulse);
+                ctx.fillStyle = 'rgba(240, 86, 29, ' + alpha + ')';
+                ctx.fillRect(0, 0, 1200, 480);
+                const bw = 520, bh = 88;
+                const bx = (1200 - bw) / 2, by = 190;
+                ctx.fillStyle = RH.black;
+                roundRect(bx, by, bw, bh, 8);
+                ctx.fill();
+                ctx.fillStyle = RH.danger;
+                ctx.fillRect(bx, by, 8, bh);
+                ctx.fillStyle = RH.white;
+                ctx.font = '700 22px "Red Hat Display", sans-serif';
+                ctx.fillText('Complete sites failure', bx + 24, by + 38);
+                ctx.font = '400 14px "Red Hat Text", sans-serif';
+                ctx.fillStyle = 'rgba(255,255,255,0.9)';
+                ctx.fillText('Auth is unavailable until at least one site recovers', bx + 24, by + 64);
+                ctx.save();
+                ctx.globalAlpha = 0.45;
+                ctx.strokeStyle = RH.danger;
+                ctx.lineWidth = 3;
+                const L = center(nodes.lb);
+                ctx.beginPath();
+                ctx.moveTo(L.x - 40, L.y - 28);
+                ctx.lineTo(L.x + 40, L.y + 28);
+                ctx.moveTo(L.x + 40, L.y - 28);
+                ctx.lineTo(L.x - 40, L.y + 28);
+                ctx.stroke();
+                ctx.restore();
+            }
+
+            function frame() {
+                const dpr = window.devicePixelRatio || 1;
+                const rect = canvas.getBoundingClientRect();
+                const w = Math.max(800, Math.floor(rect.width));
+                const h = Math.max(400, Math.floor(rect.height));
+                if (canvas.width !== Math.floor(w * dpr) || canvas.height !== Math.floor(h * dpr)) {
+                    canvas.width = Math.floor(w * dpr);
+                    canvas.height = Math.floor(h * dpr);
+                }
+                ctx.setTransform(dpr * (w / 1200), 0, 0, dpr * (h / 480), 0, 0);
+
+                ctx.clearRect(0, 0, 1200, 480);
+                ctx.fillStyle = RH.light;
+                ctx.fillRect(0, 0, 1200, 480);
+
+                const anyUp = siteAUp || siteBUp;
+                drawLink(nodes.spa, nodes.lb, anyUp || bothDown(), bothDown());
+                drawLink(nodes.lb, nodes.a, siteAUp, !siteAUp);
+                drawLink(nodes.lb, nodes.b, siteBUp, !siteBUp);
+                drawLink(nodes.a, nodes.db, siteAUp, !siteAUp);
+                drawLink(nodes.b, nodes.db, siteBUp, !siteBUp);
+
+                drawNode(nodes.spa, !bothDown());
+                drawNode(nodes.lb, !bothDown());
+                drawNode(nodes.a, siteAUp);
+                drawNode(nodes.b, siteBUp);
+                drawNode(nodes.db, true);
+
+                maybeSpawn();
+                drawPackets();
+                if (bothDown()) drawCompleteFailureOverlay();
+                drawBanner();
+
+                requestAnimationFrame(frame);
+            }
+
+            function updateStatus() {
+                if (bothDown()) {
+                    statusEl.innerHTML = '<strong style="color:#f0561d;">Mode:</strong> complete sites failure · auth unavailable';
+                } else if (!siteAUp && siteBUp) {
+                    statusEl.innerHTML = '<strong>Mode:</strong> Site A DOWN · traffic → Site B only';
+                } else if (siteAUp && !siteBUp) {
+                    statusEl.innerHTML = '<strong>Mode:</strong> Site B DOWN · traffic → Site A only';
+                } else {
+                    statusEl.innerHTML = '<strong>Mode:</strong> both sites healthy · round-robin';
+                }
+                updateToggleLabels();
+            }
+
+            function updateToggleLabels() {
+                btnDropA.textContent = siteAUp ? 'Drop Site A' : 'Restore Site A';
+                btnDropB.textContent = siteBUp ? 'Drop Site B' : 'Restore Site B';
+            }
+
+            function setState(a, b) {
+                siteAUp = a;
+                siteBUp = b;
+                packets = [];
+                updateStatus();
+            }
+
+            btnDropA.addEventListener('click', () => setState(!siteAUp, siteBUp));
+            btnDropB.addEventListener('click', () => setState(siteAUp, !siteBUp));
+            btnDropBoth.addEventListener('click', () => setState(false, false));
+            btnRestore.addEventListener('click', () => setState(true, true));
+
+            updateStatus();
+            requestAnimationFrame(frame);
+        })();
+    </script>
+</body>
+</html>
