@@ -98,6 +98,35 @@ oc run pgcheck --rm -i --restart=Never --image=registry.access.redhat.com/hi/pos
 
 ---
 
+## Optimized Keycloak image (faster Site B startup)
+
+Site B uses a **prebuilt optimized image** (`startOptimized: true`) so pods skip the `kc.sh build` step on every start (~10s faster in lab; see [`docs/HPA-BENCHMARK.md`](../docs/HPA-BENCHMARK.md)).
+
+**Containerfile:** [`images/keycloak-optimized/Containerfile`](../images/keycloak-optimized/Containerfile)
+
+| Build-time (`kc.sh build`) | Runtime (Keycloak CR) |
+|----------------------------|------------------------|
+| `KC_DB=postgres`, `KC_FEATURES=stateless`, metrics, health | JDBC URL, hostname `auth.lan.local`, `cluster-b` cache name |
+
+Build and push to the CRC internal registry (once per CRC rebuild, or when Keycloak version changes):
+
+```powershell
+# PowerShell — CRC running, oc logged in, Podman running
+.\scripts\build-keycloak-optimized-image.ps1
+```
+
+Or Git Bash:
+
+```bash
+bash scripts/build-keycloak-optimized-image.sh
+```
+
+Image tag: `default-route-openshift-image-registry.apps-crc.testing/rhbk-mc/keycloak:26.7.0-optimized`
+
+`deploy-site-b.sh` runs the build automatically unless `SKIP_BUILD_OPT=1`.
+
+---
+
 ## Deploy Keycloak Site B
 
 ```bash

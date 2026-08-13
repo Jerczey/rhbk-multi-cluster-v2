@@ -1,4 +1,4 @@
-# Prebuilt optimized Keycloak image for startOptimized=true (HPA lab).
+# Prebuilt optimized Keycloak image for startOptimized=true (Site B + HPA lab).
 # Build options match manifests/hpa/keycloak-scalable.yaml (postgres, metrics, stateless).
 #
 # Optimized startup is two steps — do not confuse them:

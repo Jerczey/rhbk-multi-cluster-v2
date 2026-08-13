@@ -10,6 +10,18 @@ else
 fi
 NS=rhbk-mc
 
+# Build/push optimized image unless skipped (faster pod starts with startOptimized: true)
+if [[ "${SKIP_BUILD_OPT:-0}" != "1" ]]; then
+  if command -v podman >/dev/null 2>&1; then
+    echo "Building optimized Keycloak image (SKIP_BUILD_OPT=1 to skip)..."
+    bash "${ROOT}/scripts/build-keycloak-optimized-image.sh" || {
+      echo "WARN: optimized image build/push failed; ensure image exists before Keycloak starts." >&2
+    }
+  else
+    echo "WARN: podman not found; skip build. Run scripts/build-keycloak-optimized-image.ps1 on Windows." >&2
+  fi
+fi
+
 # Optional: override hostname for this CRC's apps domain
 APPS_DOMAIN="${APPS_DOMAIN:-$(oc get ingresses.config.openshift.io cluster -o jsonpath='{.spec.domain}' 2>/dev/null || echo apps-crc.testing)}"
 HOSTNAME="keycloak-b.${APPS_DOMAIN}"
@@ -18,11 +30,14 @@ oc apply -f "${ROOT_OC}/manifests/operator/subscription.yaml"
 
 echo "Waiting for Keycloak operator CSV..."
 for _ in $(seq 1 120); do
-  PHASE=$(oc get csv keycloak-operator.v26.7.0 -n "${NS}" -o jsonpath='{.status.phase}' 2>/dev/null || true)
-  [[ "${PHASE}" == "Succeeded" ]] && break
+  CSV_NAME=$(oc get csv -n "${NS}" -o name 2>/dev/null | grep keycloak-operator | head -1 || true)
+  if [[ -n "${CSV_NAME}" ]]; then
+    PHASE=$(oc get "${CSV_NAME}" -n "${NS}" -o jsonpath='{.status.phase}' 2>/dev/null || true)
+    [[ "${PHASE}" == "Succeeded" ]] && break
+  fi
   sleep 5
 done
-oc get csv keycloak-operator.v26.7.0 -n "${NS}"
+oc get csv -n "${NS}" | grep keycloak-operator || true
 
 if [[ ! -f "${ROOT}/secrets/tls.crt" ]]; then
   bash "${ROOT}/scripts/gen-tls-secret.sh"
