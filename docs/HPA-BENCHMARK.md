@@ -100,6 +100,15 @@ Suggested tuning for next iteration:
 
 The scalable CR uses `startOptimized: true`, which **requires** a prebuilt optimized image (`kc.sh build` baked in). The stock `quay.io/keycloak/keycloak:26.7.0` image does **not** work with `startOptimized: true`.
 
+**Build vs start (two layers):**
+
+| Step | Command / setting | Where |
+|------|-------------------|--------|
+| Image build | `kc.sh build` (with matching `KC_*` env) | `images/keycloak-optimized/Containerfile` |
+| Pod start | `kc.sh start --optimized` | Keycloak CR `startOptimized: true` — operator adds `--optimized` |
+
+`--optimized` is a **start** flag only. The Containerfile runs `kc.sh build`; the operator passes `--optimized` at runtime when `startOptimized: true`.
+
 **Containerfile:** `images/keycloak-optimized/Containerfile`
 
 ```dockerfile

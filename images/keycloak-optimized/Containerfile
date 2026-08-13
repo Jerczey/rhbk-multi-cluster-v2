@@ -1,5 +1,12 @@
 # Prebuilt optimized Keycloak image for startOptimized=true (HPA lab).
 # Build options match manifests/hpa/keycloak-scalable.yaml (postgres, metrics, stateless).
+#
+# Optimized startup is two steps — do not confuse them:
+#   1. Image build (here):  kc.sh build  — pre-augmentates the server into the image
+#   2. Pod start (CR):      startOptimized: true on the Keycloak CR — operator runs
+#                            kc.sh start --optimized (skips re-build on each pod start)
+# There is no --optimized flag on kc.sh build; stock quay.io/keycloak/keycloak:26.7.0
+# without a build step will fail when startOptimized=true.
 FROM quay.io/keycloak/keycloak:26.7.0 AS builder
 
 ENV KC_HEALTH_ENABLED=true
