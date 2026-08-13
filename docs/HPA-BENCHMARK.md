@@ -1,6 +1,36 @@
 # HPA benchmark report (poc-realm)
 
-This report captures the HPA lab run on CRC using the `poc-realm` workload and `AuthorizationCode` scenario from keycloak-benchmark.
+This report captures the HPA lab run on CRC using the `poc-realm` workload and Gatling scenarios from the [keycloak-benchmark](https://github.com/keycloak/keycloak-benchmark) project.
+
+## keycloak-benchmark usage
+
+Load tests use the **keycloak-benchmark** Gatling harness (`kcb.sh`), not ad-hoc curl loops.
+
+| Item | Value |
+|------|--------|
+| Project | https://github.com/keycloak/keycloak-benchmark |
+| Local build path (default) | `KCB_HOME=/path/to/keycloak-benchmark/benchmark/target/keycloak-benchmark-999.0.0-SNAPSHOT` |
+| Scenario used | `AuthorizationCode` (`keycloak.scenario.authentication.AuthorizationCode`) |
+| Realm / client | `poc-realm` + confidential client `poc-load` (see `apps/poc-load`) |
+| Seed users | `scripts/seed-load-users.js` (1000 users for ramp tests) |
+| Run script | `scripts/run-hpa-benchmark.sh` |
+| Matrix script | `scripts/run-hpa-matrix.sh` |
+
+Example single run (direct CRC route, 100 concurrent users, 60s measurement):
+
+```bash
+export KCB_HOME=/path/to/keycloak-benchmark/benchmark/target/keycloak-benchmark-999.0.0-SNAPSHOT
+TARGET=direct SCENARIO=AuthorizationCode CONCURRENT=100 MEASUREMENT=60 \
+  bash scripts/run-hpa-benchmark.sh
+```
+
+Example matrix (direct + HAProxy, ramps 100–1000):
+
+```bash
+bash scripts/run-hpa-matrix.sh
+```
+
+Protected API load (JWT validation on `poc-api`) was exercised separately via the PoC SPA stack; HPA matrix numbers below are **OIDC login** throughput from keycloak-benchmark only.
 
 ## Test setup
 
@@ -10,8 +40,6 @@ This report captures the HPA lab run on CRC using the `poc-realm` workload and `
 - Target paths:
   - direct: `https://auth.lan.local:443/`
   - haproxy: `https://auth.lan.local:8443/`
-- Matrix script: `scripts/run-hpa-matrix.sh`
-- Benchmark script: `scripts/run-hpa-benchmark.sh`
 - Final run log: `benchmark-results/matrix-run-final-timeboxed-20260811T191209Z.log`
 - Final matrix summary: `benchmark-results/matrix-summary-20260811T191209Z.md`
 
@@ -68,13 +96,55 @@ Suggested tuning for next iteration:
 3. If CRC memory pressure appears, cap `maxReplicas: 3` for local runs and compare throughput tradeoff.
 4. Add one memory-HPA A/B run at `500` concurrency to quantify CPU-vs-memory policy differences.
 
-## Optimized startup note
+## Optimized image (`startOptimized: true`)
 
-- The scalable CR is configured for `startOptimized: true` and must use a prebuilt optimized Keycloak image.
-- Benefit: shorter startup path during scale-out and restarts.
-- Tradeoff: with `minReplicas: 1`, first burst after idle may still see cold-start latency while HPA scales out.
-- If startup fails, verify the image was built for optimized startup and re-apply with:
-  - `OPT_IMAGE=<your-prebuilt-optimized-tag> bash scripts/apply-hpa-lab.sh cpu`
+The scalable CR uses `startOptimized: true`, which **requires** a prebuilt optimized image (`kc.sh build` baked in). The stock `quay.io/keycloak/keycloak:26.7.0` image does **not** work with `startOptimized: true`.
+
+**Containerfile:** `images/keycloak-optimized/Containerfile`
+
+```dockerfile
+FROM quay.io/keycloak/keycloak:26.7.0 AS builder
+
+ENV KC_HEALTH_ENABLED=true
+ENV KC_METRICS_ENABLED=true
+ENV KC_DB=postgres
+ENV KC_FEATURES=stateless
+
+RUN /opt/keycloak/bin/kc.sh build
+
+FROM quay.io/keycloak/keycloak:26.7.0
+
+COPY --from=builder /opt/keycloak/ /opt/keycloak/
+
+USER 1000
+```
+
+**Build and push to the CRC internal registry:**
+
+```bash
+bash scripts/build-keycloak-optimized-image.sh
+# or manually:
+podman build -f images/keycloak-optimized/Containerfile \
+  -t default-route-openshift-image-registry.apps-crc.testing/rhbk-mc/keycloak:26.7.0-optimized \
+  images/keycloak-optimized
+eval $(crc oc-env)
+echo "$(oc whoami -t)" | podman login -u kubeadmin --password-stdin \
+  default-route-openshift-image-registry.apps-crc.testing
+podman push default-route-openshift-image-registry.apps-crc.testing/rhbk-mc/keycloak:26.7.0-optimized
+```
+
+**Apply HPA lab with the optimized image:**
+
+```bash
+OPT_IMAGE=default-route-openshift-image-registry.apps-crc.testing/rhbk-mc/keycloak:26.7.0-optimized \
+  bash scripts/apply-hpa-lab.sh cpu
+```
+
+Benefits and tradeoffs:
+
+- Benefit: shorter startup during HPA scale-out and pod restarts (see Startup A/B below).
+- Tradeoff: with `minReplicas: 1`, the first burst after idle may still see cold-start latency while HPA scales out.
+- If startup fails, rebuild the image with `KC_FEATURES=stateless` (required for this lab CR) and verify `OPT_IMAGE` matches the pushed tag.
 
 ## Startup A/B (clean measurement)
 
@@ -114,3 +184,4 @@ Notes:
 
 - [Keycloak horizontal autoscaling guide](https://www.keycloak.org/getting-started/getting-started-scaling-and-tuning#_horizontal_autoscaling)
 - [Keycloak benchmark project](https://github.com/keycloak/keycloak-benchmark)
+- [Keycloak optimized startup](https://www.keycloak.org/server/containers#_creating_a_customized_and_optimized_container_image)

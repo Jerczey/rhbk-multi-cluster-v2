@@ -2,11 +2,11 @@
 
 Dual Keycloak **26.7** clusters (`stateless` preview), Podman PostgreSQL **synchronous** replication across two LAN hosts, LAN HAProxy on `auth.lan.local:8443`, and a Red Hat–branded SPA for failover drills.
 
-Official guides used (see `docs/`):
+Official guides used:
 
-- Multi-cluster deployments (v2)
-- Concepts for multi-cluster deployments (v2)
-- Deploying Keycloak for HA with the Operator (v2)
+- [Multi-cluster deployments (v2)](https://www.keycloak.org/high-availability/multi-cluster/deployments)
+- [Concepts for multi-cluster deployments (v2)](https://www.keycloak.org/high-availability/multi-cluster/concepts)
+- [Deploying Keycloak for HA with the Operator (v2)](https://www.keycloak.org/operator/installation)
 
 ---
 

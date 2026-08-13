@@ -16,6 +16,9 @@ node_modules/
 # HPA / benchmark artifacts
 benchmark-results/
 
+# Local copies of Keycloak guides (use keycloak.org links in docs)
+*.pdf
+
 # OS / editor
 .DS_Store
 Thumbs.db
