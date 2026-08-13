@@ -115,6 +115,29 @@ Build and push to the CRC internal registry (once per CRC rebuild, or when Keycl
 .\scripts\build-keycloak-optimized-image.ps1
 ```
 
+CRC registry TLS is cluster-signed. The script uses `podman login --tls-verify=false` (same as `oc --insecure-skip-tls-verify`).
+
+On Windows, Podman runs inside a VM. CRC maps the registry hostname to `127.0.0.1` on Windows, but inside the Podman VM that address is the VM itself — not the Windows host where CRC listens on `:443`. The build script fixes this automatically by pointing the registry hostname at the Podman VM gateway (the Windows host IP).
+
+If `podman push` fails with `dial tcp 127.0.0.1:80: connect: connection refused`, re-run `.\scripts\build-keycloak-optimized-image.ps1` (it updates `/etc/hosts` in the Podman machine). Or verify from the VM:
+
+```powershell
+podman machine ssh "getent hosts default-route-openshift-image-registry.apps-crc.testing"
+# should NOT be 127.0.0.1 — should be the gateway (e.g. 172.28.144.1)
+podman machine ssh "curl -sk -o /dev/null -w '%{http_code}\n' https://default-route-openshift-image-registry.apps-crc.testing/v2/"
+# expect 401 (registry up, auth required)
+```
+
+Manual login + push (after hosts fix above):
+
+```powershell
+$REG = "default-route-openshift-image-registry.apps-crc.testing"
+oc whoami -t | podman login -u (oc whoami) --password-stdin --tls-verify=false $REG
+podman push --tls-verify=false default-route-openshift-image-registry.apps-crc.testing/rhbk-mc/keycloak:26.7.0-optimized
+```
+
+A `401` from `curl -sk https://$REG/v2/` means the registry is **up** (auth required). `x509: certificate signed by unknown authority` on login means use `--tls-verify=false`, not that the registry is down.
+
 Or Git Bash:
 
 ```bash
