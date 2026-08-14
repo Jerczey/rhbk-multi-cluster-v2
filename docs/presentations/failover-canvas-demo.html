@@ -109,7 +109,7 @@
 <body>
     <main class="page">
         <h1>Multi-cluster failover canvas</h1>
-        <p class="subtitle">SPA → HAProxy → Site A / Site B → shared Postgres. Toggle sites to see traffic routing.</p>
+        <p class="subtitle">SPA → HAProxy → Site A / Site B; both Keycloak clusters JDBC to Linux primary Postgres.</p>
         <div class="failover-wrap">
             <div class="failover-controls">
                 <button type="button" class="failover-btn" id="btnDropSiteA">Drop Site A</button>
@@ -119,7 +119,7 @@
                 <span class="failover-status" id="failoverStatus"><strong>Mode:</strong> both sites healthy · round-robin</span>
             </div>
             <canvas id="failoverCanvas" width="1200" height="480" aria-label="Animated failover diagram from SPA through HAProxy to Site A and Site B"></canvas>
-            <p class="failover-caption">Packets only reach healthy backends. One site down = IdP continues on the other. Both down = complete sites failure (no auth until a site recovers).</p>
+            <p class="failover-caption">Both sites JDBC to the Linux primary (shared DB). Windows Podman standby replicates for DR only — not a Keycloak JDBC target.</p>
         </div>
     </main>
 
@@ -151,15 +151,23 @@
             let failPulse = 0;
 
             const nodes = {
-                spa:  { x: 110, y: 240, w: 140, h: 70, label: 'PoC SPA', sub: ':8444' },
-                lb:   { x: 400, y: 240, w: 160, h: 70, label: 'HAProxy', sub: 'auth.lan.local' },
-                a:    { x: 760, y: 120, w: 170, h: 80, label: 'Site A', sub: 'cluster-a · Linux' },
-                b:    { x: 760, y: 320, w: 170, h: 80, label: 'Site B', sub: 'cluster-b · Windows' },
-                db:   { x: 1040, y: 240, w: 130, h: 70, label: 'Postgres', sub: 'shared primary' }
+                spa:  { x: 100, y: 240, w: 140, h: 70, label: 'PoC SPA', sub: ':8444' },
+                lb:   { x: 380, y: 240, w: 160, h: 70, label: 'HAProxy', sub: 'auth.lan.local' },
+                a:    { x: 700, y: 95, w: 170, h: 80, label: 'Site A', sub: 'cluster-a · Linux CRC' },
+                b:    { x: 700, y: 305, w: 170, h: 80, label: 'Site B', sub: 'cluster-b · Windows CRC' },
+                dbPrimary: { x: 960, y: 88, w: 118, h: 86, kind: 'cylinder', label: 'Postgres', sub: 'primary · Linux Podman' },
+                dbStandby: { x: 960, y: 298, w: 118, h: 86, kind: 'cylinder', label: 'Postgres', sub: 'standby · Windows Podman' }
             };
 
             function bothDown() { return !siteAUp && !siteBUp; }
             function center(n) { return { x: n.x + n.w / 2, y: n.y + n.h / 2 }; }
+            function nodeCenter(n) {
+                if (n.kind === 'cylinder') {
+                    const ry = 10;
+                    return { x: n.x + n.w / 2, y: n.y + ry + (n.h - ry * 2) / 2 };
+                }
+                return center(n);
+            }
 
             function roundRect(x, y, w, h, r) {
                 ctx.beginPath();
@@ -199,8 +207,75 @@
                 ctx.restore();
             }
 
+            function drawCylinder(n, up) {
+                const { x, y, w, h } = n;
+                const rx = w / 2;
+                const ry = 10;
+                const cx = x + rx;
+                const bodyTop = y + ry;
+                const bodyH = h - ry * 2;
+                ctx.save();
+                if (!up) ctx.globalAlpha = 0.45;
+                ctx.fillStyle = RH.white;
+                ctx.strokeStyle = up ? RH.black : RH.danger;
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.rect(x, bodyTop, w, bodyH);
+                ctx.fill();
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.ellipse(cx, bodyTop, rx, ry, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.ellipse(cx, bodyTop + bodyH, rx, ry, 0, 0, Math.PI);
+                ctx.stroke();
+                ctx.fillStyle = up ? RH.red : RH.danger;
+                ctx.fillRect(x, bodyTop, 5, bodyH);
+                ctx.fillStyle = RH.black;
+                ctx.font = '700 14px "Red Hat Display", sans-serif';
+                ctx.fillText(n.label, x + 12, bodyTop + 22);
+                ctx.fillStyle = RH.gray;
+                ctx.font = '400 11px "Red Hat Text", sans-serif';
+                ctx.fillText(n.sub, x + 12, bodyTop + 40);
+                const pill = up ? 'UP' : 'DOWN';
+                const pw = 44;
+                ctx.fillStyle = up ? RH.success : RH.danger;
+                roundRect(x + w - pw - 8, bodyTop + 6, pw, 18, 4);
+                ctx.fill();
+                ctx.fillStyle = RH.white;
+                ctx.font = '700 10px "Red Hat Text", sans-serif';
+                ctx.fillText(pill, x + w - pw, bodyTop + 19);
+                ctx.restore();
+            }
+
+            function drawReplicationLink() {
+                const p = nodeCenter(nodes.dbPrimary);
+                const s = nodeCenter(nodes.dbStandby);
+                const lx = p.x + nodes.dbPrimary.w / 2 + 14;
+                ctx.save();
+                ctx.setLineDash([5, 5]);
+                ctx.strokeStyle = RH.gray;
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(lx, p.y);
+                ctx.lineTo(lx, s.y);
+                ctx.stroke();
+                ctx.setLineDash([]);
+                ctx.beginPath();
+                ctx.moveTo(lx - 4, s.y - 8);
+                ctx.lineTo(lx, s.y);
+                ctx.lineTo(lx + 4, s.y - 8);
+                ctx.stroke();
+                ctx.fillStyle = RH.gray;
+                ctx.font = '400 10px "Red Hat Text", sans-serif';
+                ctx.fillText('streaming', lx + 8, (p.y + s.y) / 2 - 4);
+                ctx.fillText('replication', lx + 8, (p.y + s.y) / 2 + 8);
+                ctx.restore();
+            }
+
             function drawLink(a, b, active, dashed) {
-                const A = center(a), B = center(b);
+                const A = nodeCenter(a), B = nodeCenter(b);
                 ctx.save();
                 ctx.beginPath();
                 ctx.moveTo(A.x, A.y);
@@ -235,8 +310,8 @@
                 if (siteBUp) targets.push(nodes.b);
                 if (!targets.length) return;
                 const tgt = targets[Math.floor(Math.random() * targets.length)];
-                path.push({ x: center(tgt).x, y: center(tgt).y });
-                path.push({ x: center(nodes.db).x, y: center(nodes.db).y });
+                path.push({ x: nodeCenter(tgt).x, y: nodeCenter(tgt).y });
+                path.push({ x: nodeCenter(nodes.dbPrimary).x, y: nodeCenter(nodes.dbPrimary).y });
                 spawnPacket(path, false);
             }
 
@@ -346,14 +421,16 @@
                 drawLink(nodes.spa, nodes.lb, anyUp || bothDown(), bothDown());
                 drawLink(nodes.lb, nodes.a, siteAUp, !siteAUp);
                 drawLink(nodes.lb, nodes.b, siteBUp, !siteBUp);
-                drawLink(nodes.a, nodes.db, siteAUp, !siteAUp);
-                drawLink(nodes.b, nodes.db, siteBUp, !siteBUp);
+                drawLink(nodes.a, nodes.dbPrimary, siteAUp, !siteAUp);
+                drawLink(nodes.b, nodes.dbPrimary, siteBUp, !siteBUp);
+                drawReplicationLink();
 
                 drawNode(nodes.spa, !bothDown());
                 drawNode(nodes.lb, !bothDown());
                 drawNode(nodes.a, siteAUp);
                 drawNode(nodes.b, siteBUp);
-                drawNode(nodes.db, true);
+                drawCylinder(nodes.dbPrimary, true);
+                drawCylinder(nodes.dbStandby, true);
 
                 maybeSpawn();
                 drawPackets();
