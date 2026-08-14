@@ -55,7 +55,34 @@ Ensure Keycloak client `poc-spa` allows redirect URI `https://auth.lan.local:844
 1. Install Podman Desktop (or Podman) and confirm: `podman run hello-world`
 2. Install CRC for Windows, start it, `crc oc-env`, then `oc login -u kubeadmin ...`
 3. Allow inbound TCP **5432** from `192.168.0.114` (Windows Defender Firewall) for promote/testing
-4. Clone or pull: https://github.com/Jerczey/rhbk-multi-cluster-v2  
+4. **OpenSSH Server** (optional — Linux Site A SSH into Windows): elevated PowerShell:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\setup-openssh-server.ps1
+```
+
+From Linux: `ssh yuke@192.168.0.102` (Windows password, or add `~/.ssh/authorized_keys` on Windows). Firewall allows **192.168.0.114** only by default.
+
+If you sign in with a **PIN only** (no password), SSH password auth will not work. Create a dedicated local SSH user (elevated PowerShell):
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\setup-openssh-ssh-user.ps1 -Username sitea-ssh
+# prompts for a password, or add: -Password 'YourPoCPassword!'
+```
+
+From Linux: `ssh sitea-ssh@192.168.0.102`
+
+**`oc` / `crc oc-env` for `sitea-ssh`** (elevated PowerShell on Windows):
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\setup-sitea-ssh-oc-path.ps1
+```
+
+Runs `crc oc-env`, copies `oc` to `C:\ProgramData\crc\bin` (readable by all users), publishes `C:\ProgramData\crc\kubeconfig`, adds CRC to Machine PATH, and writes a PowerShell profile (`Use-CrcOcEnv`) for SSH sessions. Re-run after a CRC update if `oc` moves.
+
+New SSH session: `oc whoami`, `crc status`.
+
+5. Clone or pull: https://github.com/Jerczey/rhbk-multi-cluster-v2  
    Copy `secrets/postgres.env.example` → `secrets/postgres.env` (and TLS if needed)
 
 Optional: LAN file share from Linux `http://192.168.0.114:8765/` when the helper is running.
@@ -147,6 +174,47 @@ bash scripts/build-keycloak-optimized-image.sh
 Image tag: `default-route-openshift-image-registry.apps-crc.testing/rhbk-mc/keycloak:26.7.0-optimized`
 
 `deploy-site-b.sh` runs the build automatically unless `SKIP_BUILD_OPT=1`.
+
+### After CRC restart (registry slow / Keycloak stuck)
+
+CRC boot often leaves the **image registry** and **Keycloak** starting for several minutes. Disk is tight (~45 GB / 53 GB) — avoid heavy work until the cluster is up.
+
+**1. Wait for registry** (401 = healthy):
+
+```powershell
+oc get co image-registry
+curl.exe -sk -o NUL -w "%{http_code}`n" https://default-route-openshift-image-registry.apps-crc.testing/v2/
+```
+
+**2. Restart Keycloak** once registry is up (ImagePullBackOff from an earlier 503 is common):
+
+```powershell
+oc delete pod keycloak-b-0 -n rhbk-mc
+oc -n rhbk-mc wait --for=condition=Ready pod/keycloak-b-0 --timeout=300s
+```
+
+Or use the helper (wait + optional prune + Keycloak):
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\post-crc-boot-site-b.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\post-crc-boot-site-b.ps1 -PruneImages
+```
+
+**3. Safe image cleanup** (only after cluster is stable — keeps tagged ImageStreams like `keycloak:26.7.0-optimized`):
+
+```powershell
+oc adm prune images --confirm --keep-tag-revisions=1 --keep-younger-than=24h
+```
+
+Do **not** delete `imagestream/keycloak` in `rhbk-mc` — you would need to `podman push` the optimized image again.
+
+**4. Local Podman cache** (Windows build host only, not the CRC registry):
+
+```powershell
+podman image prune -f
+```
+
+**5. If disk stays full:** `crc config set disk-size 60` then recreate CRC (last resort).
 
 ---
 
