@@ -6,7 +6,7 @@ $ErrorActionPreference = "Stop"
 
 $PRIMARY_HOST = if ($env:PRIMARY_HOST) { $env:PRIMARY_HOST } else { "192.168.0.114" }
 $PRIMARY_PORT = if ($env:PRIMARY_PORT) { $env:PRIMARY_PORT } else { "5432" }
-$REPLICATION_USER = "replicator"
+$REPLICATION_USER = "replicator" # notsecret — lab role name, not a credential
 $REPLICATION_PASSWORD = "ReplicatorPoC2026!" # notsecret
 $POSTGRES_IMAGE = "registry.access.redhat.com/hi/postgresql:17"
 $CONTAINER_NAME = "pg-standby-site-b"

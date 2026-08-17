@@ -17,6 +17,9 @@ curl -sk "https://auth.lan.local:8443/realms/poc-realm/.well-known/openid-config
 echo "=== Postgres replication ==="
 podman exec pg-primary-site-a psql -U keycloak -d keycloak -c \
   "SELECT application_name, client_addr, state, sync_state FROM pg_stat_replication;"
+if ! firewall-cmd --list-rich-rules 2>/dev/null | grep -q 'port port="5432"'; then
+  echo "WARN postgres: LAN port 5432 not in firewalld — run ./scripts/open-lab-firewall.sh (Site B gets 'no route to host')"
+fi
 echo "=== SPA (optional) ==="
 if curl -sk --max-time 3 https://auth.lan.local:8444/api/lb-check 2>/dev/null | grep -q UP; then
   echo "UP (https://auth.lan.local:8444/api/lb-check)"

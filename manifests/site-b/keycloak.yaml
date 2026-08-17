@@ -8,9 +8,8 @@ metadata:
     site: site-b
 spec:
   instances: 1
-  # Prebuilt with images/keycloak-optimized/Containerfile — build via scripts/build-keycloak-optimized-image.ps1
-  image: default-route-openshift-image-registry.apps-crc.testing/rhbk-mc/keycloak:26.7.0-optimized
-  startOptimized: true
+  image: quay.io/keycloak/keycloak:26.7.0
+  startOptimized: false
   hostname:
     # Must match Site A — single OIDC issuer for multi-site SPA
     hostname: https://auth.lan.local:8443
@@ -19,7 +18,7 @@ spec:
     tlsSecret: keycloak-tls-secret
   db:
     vendor: postgres
-    url: jdbc:postgresql://192.168.0.114:5432/keycloak
+    url: jdbc:postgresql://10.96.113.192:5432/keycloak
     poolMinSize: 5
     poolInitialSize: 5
     poolMaxSize: 15
@@ -32,6 +31,8 @@ spec:
   features:
     enabled:
       - stateless
+      - token-exchange
+      - admin-fine-grained-authz:v1
   additionalOptions:
     - name: spi-cache-embedded--default--cluster-name
       value: cluster-b
@@ -41,6 +42,10 @@ spec:
       value: "true"
     - name: db-tls-mode
       value: disabled
+    - name: cache
+      value: local
+    - name: server-async-bootstrap
+      value: "false"
   ingress:
     enabled: true
     annotations:

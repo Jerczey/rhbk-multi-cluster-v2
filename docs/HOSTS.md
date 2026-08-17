@@ -1,5 +1,26 @@
 # Hosts entries for multi-site PoC
 
+## Changed network (home ↔ office)
+
+When the Linux laptop gets a new LAN IP, Keycloak JDBC URLs still point at the old address until you reconcile:
+
+```bash
+bash scripts/reconcile-lab-primary-host.sh
+```
+
+Then update `/etc/hosts` below (and Windows hosts + Site B JDBC manually). The Postgres Podman container does not need a new IP — it stays on host `:5432`.
+
+**Two IPs matter:**
+
+| Variable | Typical value | Used for |
+|----------|---------------|----------|
+| `PRIMARY_HOST` | Office/home WiFi LAN IP | `/etc/hosts`, TLS SAN, **Site B JDBC** (Windows → Linux Postgres) |
+| `CRC_DB_HOST` | `192.168.122.1` (virbr0) | **Site A Keycloak JDBC** (CRC pods → host Postgres) |
+
+Do not put the office WiFi IP in Site A JDBC — CRC pods reach the host via the libvirt bridge.
+
+---
+
 On Linux, Windows, and any browser client, add:
 
 ```

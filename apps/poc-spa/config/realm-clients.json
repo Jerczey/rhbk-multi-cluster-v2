@@ -43,6 +43,44 @@
       "publicClient": false,
       "bearerOnly": true,
       "protocol": "openid-connect"
+    },
+    {
+      "clientId": "poc-exchange-requester",
+      "name": "PoC token exchange requester (V2)",
+      "enabled": true,
+      "publicClient": false,
+      "secret": "poc-exchange-requester-secret",
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": false,
+      "attributes": {
+        "standard.token.exchange.enabled": "true"
+      }
+    },
+    {
+      "clientId": "poc-exchange-target",
+      "name": "PoC token exchange target audience",
+      "enabled": true,
+      "publicClient": false,
+      "secret": "poc-exchange-target-secret",
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "bearerOnly": false,
+      "protocol": "openid-connect"
+    },
+    {
+      "clientId": "poc-exchange-source",
+      "name": "PoC token exchange source (initial token)",
+      "enabled": true,
+      "publicClient": false,
+      "secret": "poc-exchange-source-secret",
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": true,
+      "redirectUris": ["http://localhost:8080/*"],
+      "webOrigins": ["+"],
+      "attributes": {
+        "standard.token.exchange.enabled": "true"
+      }
     }
   ],
   "roles": [

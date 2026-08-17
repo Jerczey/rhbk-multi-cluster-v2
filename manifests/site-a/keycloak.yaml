@@ -18,7 +18,7 @@ spec:
     tlsSecret: keycloak-tls-secret
   db:
     vendor: postgres
-    url: jdbc:postgresql://192.168.0.114:5432/keycloak
+    url: jdbc:postgresql://192.168.122.1:5432/keycloak
     poolMinSize: 5
     poolInitialSize: 5
     poolMaxSize: 15
@@ -31,6 +31,9 @@ spec:
   features:
     enabled:
       - stateless
+      # Legacy token exchange V1 (lab only — deprecated; see docs/OIDC-FLOW-TESTS.md)
+      - token-exchange
+      - admin-fine-grained-authz:v1
   additionalOptions:
     - name: spi-cache-embedded--default--cluster-name
       value: cluster-a

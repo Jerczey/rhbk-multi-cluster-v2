@@ -33,7 +33,7 @@ SPA runs on **Linux**, not on Windows CRC. After Linux `npm start` in `apps/poc-
 
 1. Hosts: `192.168.0.114  auth.lan.local`
 2. Trust https://auth.lan.local:8443/lb-check (and `:8444` if prompted)
-3. Open **https://auth.lan.local:8444** — users `alice`/`alice`, `bob`/`bob`
+3. Open **https://auth.lan.local:8444** — users `alice`/`alice`, `bob`/`bob` (lab demo — notsecret)
 
 Ensure Keycloak client `poc-spa` allows redirect URI `https://auth.lan.local:8444/*` (see [`apps/poc-spa/config/realm-clients.json`](../apps/poc-spa/config/realm-clients.json)). Details: [`apps/poc-spa/README.md`](../apps/poc-spa/README.md).
 
@@ -87,6 +87,22 @@ New SSH session: `oc whoami`, `crc status`.
 
 Optional: LAN file share from Linux `http://192.168.0.114:8765/` when the helper is running.
 
+### Control Site B from Linux (SSH + password file)
+
+No SSH keys required. On **Linux**:
+
+```bash
+cp secrets/site-b-ssh.env.example secrets/site-b-ssh.env
+# Edit: SITE_B_SSH_USER, SITE_B_SSH_PASSWORD (lab only; file is gitignored)
+
+chmod +x scripts/site-b-ssh.sh scripts/site-b-keycloak-scale.sh
+./scripts/site-b-ssh.sh oc get pods -n rhbk-mc
+./scripts/site-b-keycloak-scale.sh 0   # drop Site B Keycloak for TE-3 / AC-5
+./scripts/site-b-keycloak-scale.sh 1   # restore
+```
+
+Requires `sshpass` on Linux (`dnf install sshpass`). The Windows user (`sitea-ssh`) must have `oc` on PATH in non-interactive SSH sessions (log in once via `./scripts/site-b-ssh.sh --shell` and run `where oc`).
+
 ---
 
 ## Postgres standby
@@ -96,6 +112,30 @@ From `postgres/standby` in PowerShell:
 ```powershell
 .\start-standby.ps1
 ```
+
+### WSL / Podman machine: `no route to host` to `192.168.0.114:5432`
+
+`pg_basebackup` runs **inside the Podman machine VM** (WSL), not on the Windows LAN stack. Two common causes:
+
+| Cause | Fix |
+|-------|-----|
+| **Linux primary firewall** (Fedora rejects inbound on `enp198s0f3u1`) | On Linux Site A: `./scripts/open-lab-firewall.sh` (opens `5432/tcp` for `192.168.0.0/24`) |
+| **WSL2 cannot route to LAN** (`192.168.0.x`) | Run standby from **Windows PowerShell** (`start-standby.ps1`), or enable [WSL mirrored networking](https://learn.microsoft.com/en-us/windows/wsl/networking#mirrored-mode-networking), or run `pg_basebackup` from the Windows host and only start the container in Podman |
+
+**Diagnose where it fails:**
+
+```powershell
+# 1) Windows host → Linux primary (should succeed after firewall script)
+Test-NetConnection 192.168.0.114 -Port 5432
+
+# 2) WSL distro
+wsl -e bash -lc "nc -zv 192.168.0.114 5432"
+
+# 3) Inside Podman machine VM (this is what start-standby.sh uses)
+podman machine ssh -- nc -zv 192.168.0.114 5432
+```
+
+If (1) works but (3) fails, use `start-standby.ps1` from PowerShell (Podman Desktop on Windows) instead of bash inside WSL.
 
 Uses Podman named volume `pg-standby-site-b-data` (Windows bind mounts break postgres UID ownership). Helpers: `configure-standby.sh`.
 

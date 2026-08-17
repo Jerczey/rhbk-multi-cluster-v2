@@ -1,0 +1,16 @@
+# Lab-only: legacy Token Exchange V1 + FGAP v1 (preview/deprecated).
+# Prefer manifests/site-a|site-b/keycloak.yaml (features baked in) or:
+#   bash scripts/enable-token-exchange-v1-lab.sh
+#
+# Revert: remove token-exchange and admin-fine-grained-authz:v1 from features.enabled
+apiVersion: k8s.keycloak.org/v2alpha1
+kind: Keycloak
+metadata:
+  name: keycloak
+  namespace: rhbk-mc
+spec:
+  features:
+    enabled:
+      - stateless
+      - token-exchange
+      - admin-fine-grained-authz:v1

@@ -87,6 +87,10 @@ for _ in $(seq 1 60); do
       < "${ROOT}/postgres/primary/init-replication.sql" >/dev/null
     podman exec "${CONTAINER_NAME}" psql -U "${POSTGRES_USER}" -d "${POSTGRES_DB}" -c \
       "SELECT application_name, state, sync_state FROM pg_stat_replication;"
+    if [[ -x "${ROOT}/scripts/open-lab-firewall.sh" ]]; then
+      echo "Ensuring LAN firewall allows Postgres (5432) from Site B..."
+      bash "${ROOT}/scripts/open-lab-firewall.sh" || echo "WARN: open-lab-firewall.sh failed (run manually if remote DB cannot connect)" >&2
+    fi
     exit 0
   fi
   sleep 1

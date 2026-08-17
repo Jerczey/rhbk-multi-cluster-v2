@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OIDC flow test results — 2026-08-14</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Red+Hat+Display:wght@400;700&family=Red+Hat+Text:wght@400;700&family=Red+Hat+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --rh-red: #ee0000;
+            --rh-black: #151515;
+            --rh-gray-dark: #595959;
+            --rh-gray-light: #f5f5f5;
+            --rh-success: #3d7317;
+            --rh-danger: #f0561d;
+            --rh-warning: #f8ce1c;
+            --rh-info: #0066cc;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            font-family: 'Red Hat Text', 'Helvetica Neue', Arial, sans-serif;
+            background: #1a1a1a;
+            color: var(--rh-black);
+            margin: 0;
+            min-height: 100vh;
+            padding: 24px;
+        }
+
+        .page {
+            max-width: 1100px;
+            margin: 0 auto;
+            background: #fff;
+            border-radius: 8px;
+            padding: 28px 32px 32px;
+        }
+
+        h1 {
+            font-family: 'Red Hat Display', sans-serif;
+            font-size: 1.75em;
+            color: var(--rh-red);
+            margin: 0 0 6px;
+        }
+
+        h2 {
+            font-family: 'Red Hat Display', sans-serif;
+            font-size: 1.15em;
+            color: var(--rh-black);
+            margin: 28px 0 10px;
+            border-left: 4px solid var(--rh-red);
+            padding-left: 10px;
+        }
+
+        .subtitle {
+            color: var(--rh-gray-dark);
+            margin: 0 0 18px;
+            font-size: 0.95em;
+        }
+
+        .verdict {
+            background: var(--rh-black);
+            color: #fff;
+            padding: 16px 18px;
+            border-left: 6px solid var(--rh-success);
+            margin-bottom: 20px;
+            border-radius: 4px;
+        }
+
+        .verdict strong {
+            font-family: 'Red Hat Display', sans-serif;
+            color: #fff;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+            margin-bottom: 8px;
+        }
+
+        .stat {
+            background: var(--rh-gray-light);
+            padding: 14px 16px;
+            border-radius: 6px;
+        }
+
+        .stat .value {
+            font-family: 'Red Hat Display', sans-serif;
+            font-size: 1.5em;
+            font-weight: 700;
+            color: var(--rh-black);
+        }
+
+        .stat .label {
+            font-size: 0.85em;
+            color: var(--rh-gray-dark);
+            margin-top: 4px;
+        }
+
+        .stat.success .value { color: var(--rh-success); }
+
+        .meta-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin-top: 8px;
+        }
+
+        .meta-card {
+            background: var(--rh-gray-light);
+            padding: 14px 16px;
+            border-radius: 6px;
+            font-size: 0.9em;
+        }
+
+        .meta-card h3 {
+            font-family: 'Red Hat Display', sans-serif;
+            font-size: 0.95em;
+            margin: 0 0 8px;
+        }
+
+        .meta-card ul {
+            margin: 0;
+            padding-left: 18px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.88em;
+            margin-top: 6px;
+        }
+
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px 10px;
+            text-align: left;
+            vertical-align: top;
+        }
+
+        th {
+            background: var(--rh-gray-light);
+            font-weight: 700;
+        }
+
+        tr:nth-child(even) { background: #f9f9f9; }
+
+        code, .mono {
+            font-family: 'Red Hat Mono', monospace;
+            font-size: 0.9em;
+        }
+
+        .badge {
+            display: inline-block;
+            font-family: 'Red Hat Mono', monospace;
+            font-size: 0.78em;
+            font-weight: 700;
+            padding: 2px 8px;
+            border-radius: 4px;
+            color: #fff;
+        }
+
+        .badge.pass { background: var(--rh-success); }
+        .badge.manual { background: var(--rh-gray-dark); }
+        .badge.skip { background: var(--rh-danger); }
+
+        .footer {
+            margin-top: 28px;
+            font-size: 0.85em;
+            color: var(--rh-gray-dark);
+        }
+
+        @media (max-width: 800px) {
+            .stats { grid-template-columns: 1fr 1fr; }
+            .meta-grid { grid-template-columns: 1fr; }
+        }
+
+        @media print {
+            body { background: #fff; padding: 0; }
+            .page { border-radius: 0; max-width: none; }
+            .verdict, .badge, th, tr:nth-child(even) {
+                print-color-adjust: exact;
+                -webkit-print-color-adjust: exact;
+            }
+        }
+    </style>
+</head>
+<body>
+    <main class="page">
+        <h1>OIDC flow validation results</h1>
+        <p class="subtitle">RHBK multi-cluster v2 · poc-realm · 2026-08-14 evening run · issuer <code>https://auth.lan.local:8443/realms/poc-realm</code></p>
+
+        <div class="verdict">
+            <strong>Evening verdict:</strong> Cross-site token exchange failover proven (TE-1–TE-3).
+            Automated preflight 5/5. Standard V2 and legacy V1 exchanges pass. Postgres
+            <code>site_b_standby</code> streaming in sync. Five browser-only SPA steps remain manual.
+        </div>
+
+        <div class="stats">
+            <div class="stat success">
+                <div class="value">8/13</div>
+                <div class="label">Checklist complete</div>
+            </div>
+            <div class="stat success">
+                <div class="value">5/5</div>
+                <div class="label">Preflight smoke</div>
+            </div>
+            <div class="stat">
+                <div class="value">sync</div>
+                <div class="label">Replication state</div>
+            </div>
+            <div class="stat">
+                <div class="value">5</div>
+                <div class="label">Manual SPA steps left</div>
+            </div>
+        </div>
+
+        <div class="meta-grid">
+            <div class="meta-card">
+                <h3>Lab baseline</h3>
+                <ul>
+                    <li>Image: <code>quay.io/keycloak/keycloak:26.7.0</code></li>
+                    <li>Site A / Site B Keycloak CR: Ready</li>
+                    <li>HAProxy: round-robin · no sticky cookies</li>
+                    <li>Features: <code>stateless</code>, <code>token-exchange</code>, FGAP v1</li>
+                </ul>
+            </div>
+            <div class="meta-card">
+                <h3>Scripts (evening)</h3>
+                <ul>
+                    <li><code>verify-poc.sh</code> — PASS</li>
+                    <li><code>verify-auth-code-failover.sh</code> — 5/5 PASS</li>
+                    <li><code>verify-token-exchange-v2.sh</code> — PASS</li>
+                    <li><code>verify-token-exchange-v1.sh</code> — PASS</li>
+                    <li><code>verify-token-exchange-failover.sh</code> — TE-1–3 PASS</li>
+                </ul>
+            </div>
+        </div>
+
+        <h2>Authorization code matrix</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Action</th>
+                    <th>Expected</th>
+                    <th>Result</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>AC-1</td>
+                    <td>Login SPA <code>:8444</code> (alice/alice)</td>
+                    <td>Redirect via <code>:8443</code> · issuer correct</td>
+                    <td><span class="badge manual">Manual</span></td>
+                </tr>
+                <tr>
+                    <td>AC-2</td>
+                    <td>Refresh token in SPA</td>
+                    <td>New access token · same issuer</td>
+                    <td><span class="badge manual">Manual</span></td>
+                </tr>
+                <tr>
+                    <td>AC-3</td>
+                    <td>Protected API <code>/api/protected/profile</code></td>
+                    <td>HTTP 200</td>
+                    <td><span class="badge manual">Manual</span></td>
+                </tr>
+                <tr>
+                    <td>AC-4</td>
+                    <td>Drop Site A</td>
+                    <td>Refresh + API via Site B</td>
+                    <td><span class="badge pass">PASS</span></td>
+                </tr>
+                <tr>
+                    <td>AC-5</td>
+                    <td>Restore A · drop Site B</td>
+                    <td>Refresh + API via Site A</td>
+                    <td><span class="badge pass">PASS</span></td>
+                </tr>
+                <tr>
+                    <td>AC-6</td>
+                    <td>Drop both Keycloak sites</td>
+                    <td><code>/lb-check</code> 503 · auth fails</td>
+                    <td><span class="badge pass">PASS</span></td>
+                </tr>
+                <tr>
+                    <td>AC-7</td>
+                    <td>Repeat AC-4 · DevTools cookies</td>
+                    <td>No sticky cookie · round-robin</td>
+                    <td><span class="badge manual">Manual</span></td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h2>Token exchange failover (V2 standard)</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Setup</th>
+                    <th>Expected</th>
+                    <th>Result</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>TE-1</td>
+                    <td>Both sites UP</td>
+                    <td>V2 exchange OK</td>
+                    <td><span class="badge pass">PASS</span></td>
+                </tr>
+                <tr>
+                    <td>TE-2</td>
+                    <td>Site A DOWN</td>
+                    <td>Exchange via Site B</td>
+                    <td><span class="badge pass">PASS</span></td>
+                </tr>
+                <tr>
+                    <td>TE-3</td>
+                    <td>Site B DOWN</td>
+                    <td>Exchange via Site A</td>
+                    <td><span class="badge pass">PASS</span></td>
+                </tr>
+                <tr>
+                    <td>TE-4</td>
+                    <td>Token issued · then Site A DOWN</td>
+                    <td>Exchange still OK</td>
+                    <td><span class="badge manual">Manual</span></td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h2>Results log — three runs today</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Run</th>
+                    <th>Auth code</th>
+                    <th>Token exchange</th>
+                    <th>V1 legacy</th>
+                    <th>Notes</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>2026-08-14 am</td>
+                    <td>Smoke PASS · AC-6 PASS</td>
+                    <td>TE-1 PASS · TE-2–4 SKIP</td>
+                    <td><span class="badge skip">SKIP</span></td>
+                    <td>Site B CRC down</td>
+                </tr>
+                <tr>
+                    <td>2026-08-14 pm</td>
+                    <td>Smoke 5/5 · AC-4 PASS</td>
+                    <td>TE-1 · TE-2 PASS</td>
+                    <td><span class="badge skip">SKIP</span></td>
+                    <td>Site B up · replication sync</td>
+                </tr>
+                <tr>
+                    <td>2026-08-14 evening</td>
+                    <td>Smoke 5/5 · AC-4/5/6 PASS</td>
+                    <td>TE-1 · TE-2 · TE-3 PASS</td>
+                    <td><span class="badge pass">PASS</span></td>
+                    <td>V1 enabled · V2 still PASS</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <p class="footer">
+            Full runbook: <code>docs/OIDC-FLOW-TESTS.md</code> ·
+            Cursor canvas: <code>oidc-flow-test-results-2026-08-14.canvas.tsx</code> ·
+            Repo: github.com/Jerczey/rhbk-multi-cluster-v2
+        </p>
+    </main>
+</body>
+</html>
