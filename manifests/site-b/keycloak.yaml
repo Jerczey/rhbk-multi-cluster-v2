@@ -18,7 +18,7 @@ spec:
     tlsSecret: keycloak-tls-secret
   db:
     vendor: postgres
-    url: jdbc:postgresql://10.96.113.192:5432/keycloak
+    url: jdbc:postgresql://192.168.0.116:5432/keycloak
     poolMinSize: 5
     poolInitialSize: 5
     poolMaxSize: 15
