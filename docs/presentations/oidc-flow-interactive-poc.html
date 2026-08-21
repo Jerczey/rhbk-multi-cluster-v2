@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OIDC flow lab — interactive PoC canvas</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Red+Hat+Display:wght@400;700&family=Red+Hat+Text:wght@400;700&family=Red+Hat+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --rh-red: #ee0000;
+            --rh-black: #151515;
+            --rh-gray-dark: #595959;
+            --rh-gray-light: #f5f5f5;
+            --rh-success: #3d7317;
+            --rh-danger: #f0561d;
+            --rh-warning: #f8ce1c;
+            --rh-info: #0066cc;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            font-family: 'Red Hat Text', 'Helvetica Neue', Arial, sans-serif;
+            background: #1a1a1a;
+            color: var(--rh-black);
+            margin: 0;
+            min-height: 100vh;
+            padding: 24px;
+        }
+
+        .page {
+            max-width: 1140px;
+            margin: 0 auto;
+            background: #fff;
+            border-radius: 8px;
+            padding: 28px 32px 32px;
+        }
+
+        h1 {
+            font-family: 'Red Hat Display', sans-serif;
+            font-size: 1.75em;
+            color: var(--rh-red);
+            margin: 0 0 6px;
+        }
+
+        h2 {
+            font-family: 'Red Hat Display', sans-serif;
+            font-size: 1.15em;
+            color: var(--rh-black);
+            margin: 24px 0 10px;
+            border-left: 4px solid var(--rh-red);
+            padding-left: 10px;
+        }
+
+        h3 {
+            font-family: 'Red Hat Display', sans-serif;
+            font-size: 1em;
+            margin: 0 0 8px;
+        }
+
+        .subtitle { color: var(--rh-gray-dark); margin: 0 0 16px; font-size: 0.95em; }
+
+        .pills { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+
+        .pill {
+            font-family: 'Red Hat Mono', monospace;
+            font-size: 0.78em;
+            font-weight: 700;
+            padding: 4px 10px;
+            border-radius: 999px;
+            color: #fff;
+        }
+
+        .pill.success { background: var(--rh-success); }
+        .pill.info { background: var(--rh-info); }
+        .pill.neutral { background: var(--rh-gray-dark); }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+            margin: 16px 0;
+        }
+
+        .stat {
+            background: var(--rh-gray-light);
+            padding: 14px 16px;
+            border-radius: 6px;
+        }
+
+        .stat .value {
+            font-family: 'Red Hat Display', sans-serif;
+            font-size: 1.4em;
+            font-weight: 700;
+        }
+
+        .stat .label { font-size: 0.85em; color: var(--rh-gray-dark); margin-top: 4px; }
+        .stat.success .value { color: var(--rh-success); }
+        .stat.warn .value { color: var(--rh-danger); }
+
+        .coverage {
+            display: flex;
+            height: 12px;
+            border-radius: 6px;
+            overflow: hidden;
+            margin: 8px 0 20px;
+            background: #e8e8e8;
+        }
+
+        .coverage span { display: block; height: 100%; }
+        .cov-ac { background: var(--rh-info); width: 53.8%; }
+        .cov-te { background: var(--rh-success); width: 30.8%; }
+        .cov-v1 { background: #6756a8; width: 15.4%; }
+
+        .panel {
+            background: var(--rh-gray-light);
+            border-radius: 8px;
+            padding: 16px 18px;
+            margin-bottom: 16px;
+        }
+
+        .controls { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 12px; }
+
+        .btn {
+            font-family: 'Red Hat Text', sans-serif;
+            font-size: 0.9em;
+            font-weight: 700;
+            border: none;
+            border-radius: 4px;
+            padding: 10px 16px;
+            cursor: pointer;
+            background: var(--rh-red);
+            color: #fff;
+        }
+
+        .btn.secondary { background: var(--rh-black); }
+        .btn.ghost { background: #fff; color: var(--rh-black); border: 1px solid #ccc; }
+        .btn.danger { background: var(--rh-danger); }
+        .btn.active { box-shadow: inset 0 0 0 2px var(--rh-black); }
+        .btn:hover { filter: brightness(0.92); }
+
+        .callout {
+            padding: 12px 14px;
+            border-radius: 6px;
+            border-left: 4px solid var(--rh-info);
+            background: #fff;
+            font-size: 0.92em;
+        }
+
+        .callout.success { border-left-color: var(--rh-success); }
+        .callout.warn { border-left-color: var(--rh-warning); }
+        .callout.danger { border-left-color: var(--rh-danger); }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .filters { display: flex; flex-wrap: wrap; gap: 16px; margin-bottom: 12px; align-items: end; }
+
+        label { font-size: 0.85em; color: var(--rh-gray-dark); display: block; margin-bottom: 4px; }
+
+        select {
+            font-family: 'Red Hat Text', sans-serif;
+            padding: 8px 10px;
+            border-radius: 4px;
+            border: 1px solid #ccc;
+            min-width: 200px;
+        }
+
+        .test-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+
+        .detail-card {
+            background: #fff;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 16px;
+            min-height: 280px;
+        }
+
+        .detail-card .badge-pass {
+            display: inline-block;
+            background: var(--rh-success);
+            color: #fff;
+            font-family: 'Red Hat Mono', monospace;
+            font-size: 0.78em;
+            font-weight: 700;
+            padding: 2px 8px;
+            border-radius: 4px;
+            margin-bottom: 10px;
+        }
+
+        .detail-row { font-size: 0.9em; margin: 8px 0; }
+        .detail-row strong { display: inline-block; min-width: 72px; }
+
+        code {
+            font-family: 'Red Hat Mono', monospace;
+            font-size: 0.88em;
+            background: var(--rh-gray-light);
+            padding: 1px 5px;
+            border-radius: 3px;
+        }
+
+        #topologySvg { width: 100%; height: auto; display: block; background: #fff; border-radius: 6px; border: 1px solid #ddd; }
+
+        .footer { margin-top: 24px; font-size: 0.85em; color: var(--rh-gray-dark); }
+        .footer a { color: var(--rh-info); }
+
+        @media (max-width: 900px) {
+            .stats { grid-template-columns: 1fr 1fr; }
+            .grid-2 { grid-template-columns: 1fr; }
+            .test-grid { grid-template-columns: 1fr; }
+        }
+
+        @media print {
+            body { background: #fff; padding: 0; }
+            .page { border-radius: 0; max-width: none; }
+            .btn { display: none; }
+            .callout, .pill, .badge-pass {
+                print-color-adjust: exact;
+                -webkit-print-color-adjust: exact;
+            }
+        }
+    </style>
+</head>
+<body>
+    <main class="page">
+        <div class="pills">
+            <span class="pill success">13/13 PASS</span>
+            <span class="pill info">Interactive PoC</span>
+            <span class="pill neutral">2026-08-21</span>
+        </div>
+        <h1>OIDC flow lab — interactive failover canvas</h1>
+        <p class="subtitle">
+            Authorization code (AC-1..7) and token exchange (TE-1..4) · issuer
+            <code>https://auth.lan.local:8443/realms/poc-realm</code> ·
+            Browser version of the Cursor canvas <code>oidc-flow-interactive-poc.canvas.tsx</code>
+        </p>
+
+        <div class="stats">
+            <div class="stat success"><div class="value" id="statPass">13/13</div><div class="label">Tests passed</div></div>
+            <div class="stat" id="statLb"><div class="value">UP</div><div class="label">Simulated lb-check</div></div>
+            <div class="stat"><div class="value">8</div><div class="label">Browser validated</div></div>
+            <div class="stat"><div class="value">7</div><div class="label">Script validated</div></div>
+        </div>
+
+        <p style="font-size:0.85em;color:var(--rh-gray-dark);margin:0 0 4px;">Test matrix coverage (2026-08-21 full run) · 13 pass · 0 pending</p>
+        <div class="coverage" aria-hidden="true">
+            <span class="cov-ac" title="AC tests"></span>
+            <span class="cov-te" title="TE tests"></span>
+            <span class="cov-v1" title="V1/V2 scripts"></span>
+        </div>
+
+        <h2>Failover simulator</h2>
+        <div class="panel">
+            <div class="controls">
+                <button type="button" class="btn" id="btnDropA">Drop Site A</button>
+                <button type="button" class="btn" id="btnDropB">Drop Site B</button>
+                <button type="button" class="btn danger" id="btnDropBoth">Drop both</button>
+                <button type="button" class="btn secondary" id="btnRestore">Restore both</button>
+                <button type="button" class="btn ghost" id="btnAnimate">Animate traffic</button>
+                <a class="btn ghost" href="failover-canvas-demo.html" style="text-decoration:none;display:inline-block;">Topology demo</a>
+            </div>
+            <svg id="topologySvg" viewBox="0 0 760 280" role="img" aria-label="Failover topology"></svg>
+            <div class="callout success" id="callout" style="margin-top:12px;">
+                <strong>Simulated auth path:</strong> <span id="calloutText">Both backends healthy — HAProxy round-robin without sticky cookies.</span>
+            </div>
+        </div>
+
+        <div class="grid-2">
+            <section>
+                <h2>Test explorer</h2>
+                <div class="filters">
+                    <div>
+                        <label for="phaseFilter">Phase</label>
+                        <select id="phaseFilter">
+                            <option value="all">All phases</option>
+                            <option value="auth">Authorization code (AC)</option>
+                            <option value="exchange">Token exchange (TE)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="testSelect">Test case</label>
+                        <select id="testSelect"></select>
+                    </div>
+                </div>
+                <div class="test-grid" id="testGrid"></div>
+            </section>
+            <section>
+                <h2>Test detail</h2>
+                <div class="detail-card" id="detailCard"></div>
+            </section>
+        </div>
+
+        <h2>Quick commands</h2>
+        <p><code>bash scripts/verify-poc.sh</code></p>
+        <p><code>bash scripts/verify-auth-code-failover.sh</code></p>
+        <p><code>bash scripts/verify-token-exchange-failover.sh TE-2</code></p>
+
+        <p class="footer">
+            Runbook: <code>docs/OIDC-FLOW-TESTS.md</code> ·
+            Static report: <a href="oidc-flow-test-results-2026-08-14.html">oidc-flow-test-results-2026-08-14.html</a> ·
+            Repo: <a href="https://github.com/Jerczey/rhbk-multi-cluster-v2">github.com/Jerczey/rhbk-multi-cluster-v2</a>
+        </p>
+    </main>
+
+    <script>
+        (function () {
+            const TESTS = [
+                { id: 'AC-1', phase: 'auth', title: 'SPA login', action: 'Login https://auth.lan.local:8444 (alice/alice)', expected: 'Redirect via :8443 · issuer correct', siteA: true, siteB: true, script: null, evidence: null },
+                { id: 'AC-2', phase: 'auth', title: 'Refresh token', action: 'Refresh token in SPA after login', expected: 'New access token · same issuer', siteA: true, siteB: true, script: null, evidence: null },
+                { id: 'AC-3', phase: 'auth', title: 'Protected API', action: 'Call protected API /api/protected/profile', expected: 'HTTP 200 · username alice', siteA: true, siteB: true, script: null, evidence: 'SPA uses NODE_TLS_REJECT_UNAUTHORIZED=0 for JWKS fetch' },
+                { id: 'AC-4', phase: 'auth', title: 'Failover — Site A down', action: 'Drop Site A (CR instances=0) · refresh + API', expected: 'Auth continues via Site B · /lb-check UP', siteA: false, siteB: true, script: 'oc patch keycloak … instances=0', evidence: null },
+                { id: 'AC-5', phase: 'auth', title: 'Failover — Site B down', action: 'Restore A · drop Site B · refresh + API', expected: 'Auth continues via Site A', siteA: true, siteB: false, script: null, evidence: null },
+                { id: 'AC-6', phase: 'auth', title: 'Both sites down', action: 'Drop both Keycloak CRs (instances=0)', expected: '/lb-check 503 · refresh/login fail', siteA: false, siteB: false, script: null, evidence: 'Browser: Check auth health failed · Refresh failed' },
+                { id: 'AC-7', phase: 'auth', title: 'No LB sticky cookie', action: 'DevTools → authenticate response headers', expected: 'KEYCLOAK_* cookies only · no SERVERID / route', siteA: false, siteB: true, script: null, evidence: null },
+                { id: 'TE-1', phase: 'exchange', title: 'V2 exchange · both UP', action: 'verify-token-exchange-failover.sh TE-1', expected: 'RFC 8693 exchange · aud poc-exchange-target', siteA: true, siteB: true, script: 'verify-token-exchange-failover.sh TE-1', evidence: null },
+                { id: 'TE-2', phase: 'exchange', title: 'V2 exchange · Site A down', action: 'Site A down · run TE-2', expected: 'Token exchange OK via Site B', siteA: false, siteB: true, script: 'verify-token-exchange-failover.sh TE-2', evidence: null },
+                { id: 'TE-3', phase: 'exchange', title: 'V2 exchange · Site B down', action: 'Site B down via SSH · run TE-3', expected: 'Token exchange OK via Site A', siteA: true, siteB: false, script: 'verify-token-exchange-failover.sh TE-3', evidence: null },
+                { id: 'TE-4', phase: 'exchange', title: 'V2 exchange after Site A drop', action: 'Save subject token · patch Site A instances=0 · exchange', expected: 'Exchange still OK while B serves', siteA: false, siteB: true, script: 'benchmark-results/te4-subject-token.txt', evidence: null }
+            ];
+
+            const RH = { green: '#3d7317', red: '#f0561d', gray: '#595959', light: '#f5f5f5', info: '#0066cc', black: '#151515' };
+
+            let siteAUp = true;
+            let siteBUp = true;
+            let pulse = 0;
+            let selectedId = 'overview';
+
+            const svg = document.getElementById('topologySvg');
+            const callout = document.getElementById('callout');
+            const calloutText = document.getElementById('calloutText');
+            const statLb = document.getElementById('statLb');
+            const phaseFilter = document.getElementById('phaseFilter');
+            const testSelect = document.getElementById('testSelect');
+            const testGrid = document.getElementById('testGrid');
+            const detailCard = document.getElementById('detailCard');
+
+            function lbStatus(a, b) {
+                if (a && b) return { label: 'UP · round-robin (A + B)', tone: 'success' };
+                if (a || b) return { label: 'UP · single backend (' + (a ? 'Site A' : 'Site B') + ')', tone: 'warn' };
+                return { label: '503 · no Keycloak backend', tone: 'danger' };
+            }
+
+            function calloutMessage(a, b) {
+                if (a && b) return 'Both backends healthy — HAProxy round-robin without sticky cookies (stateless + shared Postgres).';
+                if (a || b) return 'Single-site mode — traffic pinned to ' + (a ? 'Linux Site A' : 'Windows Site B') + '. Matches AC-' + (a ? '5' : '4') + ' / TE-' + (a ? '3' : '2') + '.';
+                return 'Total outage — expect /lb-check 503 and SPA refresh failure (AC-6).';
+            }
+
+            function renderDiagram() {
+                const lb = lbStatus(siteAUp, siteBUp);
+                const trafficOn = siteAUp || siteBUp;
+                const target = !siteAUp && siteBUp ? 'B' : siteAUp && !siteBUp ? 'A' : siteAUp && siteBUp ? (pulse % 2 === 0 ? 'A' : 'B') : 'none';
+                const dotX = target === 'A' ? 520 : target === 'B' ? 680 : 600;
+                const dotY = 118 + (pulse % 3) * 4;
+                const upA = siteAUp ? RH.green : RH.red;
+                const upB = siteBUp ? RH.green : RH.red;
+
+                svg.innerHTML =
+                    '<rect x="8" y="8" width="744" height="264" rx="8" fill="' + RH.light + '" stroke="#ccc"/>' +
+                    '<text x="24" y="32" fill="' + RH.gray + '" font-size="12" font-family="Red Hat Text, sans-serif">Traffic simulator · ' + lb.label + '</text>' +
+                    '<rect x="40" y="88" width="100" height="56" rx="6" fill="#fff" stroke="' + RH.info + '" stroke-width="2"/>' +
+                    '<text x="90" y="112" text-anchor="middle" fill="' + RH.gray + '" font-size="11">PoC SPA</text>' +
+                    '<text x="90" y="128" text-anchor="middle" fill="' + RH.gray + '" font-size="10">:8444</text>' +
+                    '<rect x="280" y="88" width="120" height="56" rx="6" fill="#fff" stroke="' + (trafficOn ? RH.info : RH.red) + '" stroke-width="2"/>' +
+                    '<text x="340" y="112" text-anchor="middle" fill="' + RH.gray + '" font-size="11">HAProxy</text>' +
+                    '<text x="340" y="128" text-anchor="middle" fill="' + RH.gray + '" font-size="10">:8443</text>' +
+                    '<rect x="480" y="56" width="100" height="48" rx="6" fill="' + upA + '" opacity="' + (siteAUp ? 1 : 0.55) + '"/>' +
+                    '<text x="530" y="76" text-anchor="middle" fill="#fff" font-size="11">Site A</text>' +
+                    '<text x="530" y="92" text-anchor="middle" fill="#fff" font-size="10">' + (siteAUp ? 'Ready' : 'DOWN') + '</text>' +
+                    '<rect x="620" y="56" width="100" height="48" rx="6" fill="' + upB + '" opacity="' + (siteBUp ? 1 : 0.55) + '"/>' +
+                    '<text x="670" y="76" text-anchor="middle" fill="#fff" font-size="11">Site B</text>' +
+                    '<text x="670" y="92" text-anchor="middle" fill="#fff" font-size="10">' + (siteBUp ? 'Ready' : 'DOWN') + '</text>' +
+                    '<rect x="280" y="188" width="160" height="48" rx="6" fill="#fff" stroke="#ccc"/>' +
+                    '<text x="360" y="208" text-anchor="middle" fill="' + RH.gray + '" font-size="11">Postgres primary</text>' +
+                    '<text x="360" y="224" text-anchor="middle" fill="' + RH.gray + '" font-size="10">192.168.0.116 · async repl</text>' +
+                    '<line x1="140" y1="116" x2="280" y2="116" stroke="' + (trafficOn ? RH.info : '#ccc') + '" stroke-width="2" stroke-dasharray="' + (trafficOn ? '0' : '6 4') + '"/>' +
+                    '<line x1="400" y1="116" x2="480" y2="80" stroke="' + (siteAUp && trafficOn ? RH.info : '#ccc') + '" stroke-width="2" opacity="' + (siteAUp ? 1 : 0.35) + '"/>' +
+                    '<line x1="400" y1="116" x2="620" y2="80" stroke="' + (siteBUp && trafficOn ? RH.info : '#ccc') + '" stroke-width="2" opacity="' + (siteBUp ? 1 : 0.35) + '"/>' +
+                    (trafficOn ? '<circle cx="' + dotX + '" cy="' + dotY + '" r="7" fill="' + RH.info + '"/>' : '');
+
+                statLb.querySelector('.value').textContent = lb.label.split('·')[0].trim();
+                statLb.className = 'stat' + (lb.tone === 'success' ? ' success' : lb.tone === 'danger' ? ' warn' : '');
+                callout.className = 'callout ' + (lb.tone === 'success' ? 'success' : lb.tone === 'danger' ? 'danger' : 'warn');
+                calloutText.textContent = calloutMessage(siteAUp, siteBUp);
+            }
+
+            function renderDetail(test) {
+                if (!test) {
+                    detailCard.innerHTML = '<p style="color:var(--rh-gray-dark);font-size:0.9em;">Select a test or click a scenario button. Use Drop Site A/B to mirror live PoC drills.</p>';
+                    return;
+                }
+                let html = '<span class="badge-pass">PASS</span>' +
+                    '<div class="detail-row"><strong>Action:</strong> ' + test.action + '</div>' +
+                    '<div class="detail-row"><strong>Expected:</strong> ' + test.expected + '</div>';
+                if (test.script) html += '<div class="detail-row"><strong>Script:</strong> <code>' + test.script + '</code></div>';
+                if (test.evidence) html += '<div class="detail-row" style="color:var(--rh-gray-dark);"><strong>Evidence:</strong> ' + test.evidence + '</div>';
+                html += '<p style="margin-top:14px;"><button type="button" class="btn" data-apply="' + test.id + '">Apply scenario to diagram</button></p>';
+                detailCard.innerHTML = html;
+                detailCard.querySelector('[data-apply]').addEventListener('click', function () { applyScenario(test); });
+            }
+
+            function applyScenario(test) {
+                siteAUp = test.siteA;
+                siteBUp = test.siteB;
+                selectedId = test.id;
+                pulse += 1;
+                testSelect.value = test.id;
+                renderDiagram();
+                renderGrid();
+                renderDetail(test);
+            }
+
+            function renderGrid() {
+                const phase = phaseFilter.value;
+                testGrid.innerHTML = '';
+                TESTS.filter(function (t) { return phase === 'all' || t.phase === phase; }).forEach(function (t) {
+                    const btn = document.createElement('button');
+                    btn.type = 'button';
+                    btn.className = 'btn ghost' + (selectedId === t.id ? ' active' : '');
+                    btn.textContent = t.id + ' · ' + t.title;
+                    btn.addEventListener('click', function () { applyScenario(t); });
+                    testGrid.appendChild(btn);
+                });
+            }
+
+            function initSelect() {
+                testSelect.innerHTML = '<option value="overview">Overview — pick a test</option>';
+                TESTS.forEach(function (t) {
+                    const opt = document.createElement('option');
+                    opt.value = t.id;
+                    opt.textContent = t.id + ' · ' + t.title;
+                    testSelect.appendChild(opt);
+                });
+            }
+
+            document.getElementById('btnDropA').addEventListener('click', function () { siteAUp = false; siteBUp = true; pulse++; renderDiagram(); });
+            document.getElementById('btnDropB').addEventListener('click', function () { siteAUp = true; siteBUp = false; pulse++; renderDiagram(); });
+            document.getElementById('btnDropBoth').addEventListener('click', function () { siteAUp = false; siteBUp = false; pulse++; renderDiagram(); });
+            document.getElementById('btnRestore').addEventListener('click', function () { siteAUp = true; siteBUp = true; pulse++; renderDiagram(); });
+            document.getElementById('btnAnimate').addEventListener('click', function () { pulse++; renderDiagram(); });
+
+            phaseFilter.addEventListener('change', renderGrid);
+            testSelect.addEventListener('change', function () {
+                selectedId = testSelect.value;
+                if (selectedId === 'overview') { renderDetail(null); renderGrid(); return; }
+                const test = TESTS.find(function (t) { return t.id === selectedId; });
+                renderDetail(test);
+                renderGrid();
+            });
+
+            initSelect();
+            renderDiagram();
+            renderGrid();
+            renderDetail(null);
+        })();
+    </script>
+</body>
+</html>

@@ -4,6 +4,8 @@ Runbook for confirming **authorization code** and **token exchange** flows on Ke
 
 **Interactive canvas (Cursor IDE):** open `oidc-flow-interactive-poc.canvas.tsx` from the workspace canvases panel — failover simulator (Drop Site A/B), test explorer (AC/TE), and 2026-08-21 full-run results. Static summary: `oidc-flow-test-results-2026-08-14.canvas.tsx`.
 
+**Interactive in browser (GitHub / clone):** open [`docs/presentations/oidc-flow-interactive-poc.html`](presentations/oidc-flow-interactive-poc.html) locally, or [htmlpreview on GitHub](https://htmlpreview.github.io/?https://raw.githubusercontent.com/Jerczey/rhbk-multi-cluster-v2/main/docs/presentations/oidc-flow-interactive-poc.html) after push.
+
 ## Prerequisites
 
 ```bash
