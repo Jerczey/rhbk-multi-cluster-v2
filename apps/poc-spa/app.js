@@ -79,7 +79,8 @@ http.createServer(app).listen(httpPort, () => {
   console.log(`Auth server: ${AUTH_URL} (${REALM} / poc-spa)`);
 });
 
-if (fs.existsSync(tlsCert) && fs.existsSync(tlsKey)) {
+if (process.env.SPA_SKIP_HTTPS !== '1' && process.env.SPA_SKIP_HTTPS !== 'true'
+    && fs.existsSync(tlsCert) && fs.existsSync(tlsKey)) {
   const creds = {
     cert: fs.readFileSync(tlsCert),
     key: fs.readFileSync(tlsKey),
