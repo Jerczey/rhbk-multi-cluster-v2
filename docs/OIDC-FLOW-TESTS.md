@@ -2,6 +2,8 @@
 
 Runbook for confirming **authorization code** and **token exchange** flows on Keycloak **26.7** with `stateless` multi-cluster (`auth.lan.local:8443`). Focus: **cross-site failover** (Site A / Site B), not in-site pod churn.
 
+**Interactive canvas (Cursor IDE):** open `oidc-flow-interactive-poc.canvas.tsx` from the workspace canvases panel — failover simulator (Drop Site A/B), test explorer (AC/TE), and 2026-08-21 full-run results. Static summary: `oidc-flow-test-results-2026-08-14.canvas.tsx`.
+
 ## Prerequisites
 
 ```bash
@@ -181,6 +183,9 @@ Lab scripts use `OIDC_USERNAME` / `OIDC_PASSWORD` (default `alice`/`alice`) — 
 
 | Run | AC-1..7 | TE-1..4 | V1 | Notes |
 |-----|---------|---------|-----|-------|
+| 2026-08-21 (full) | **AC-1..7 PASS** (browser AC-5/6/7) | **TE-1..4 PASS** | **PASS** | Automated + browser; site drop via CR `instances=0`; both sites restored |
+| 2026-08-21 (pm auto) | Smoke 5/5 PASS; AC-1..4/7 manual PASS earlier | TE-1 · TE-2 · TE-3 PASS | **PASS** | Site A CR `instances=1` restored; fixed `site-b-remote.sh` oc kubeconfig for TE-3 SSH |
+| 2026-08-21 (demo) | AC-1..4, AC-7 **PASS**; AC-3 after SPA `NODE_TLS_REJECT_UNAUTHORIZED=0`; AC-5/6 pending | **TE-2 PASS**; TE-1/3/4 pending | Not run | Site A STS=0 for architect demo; WiFi `192.168.0.116`; DevTools `authenticate` — Keycloak cookies only, no LB sticky |
 | 2026-08-14 (evening) | Smoke 5/5; AC-4/5 PASS; AC-1..3/7 manual SPA | TE-1..3 PASS | **PASS** (V1 preview + FGAP v1 enabled) | Both sites; `quay.io` image on Site B; V2 still PASS |
 | 2026-08-14 (pm) | Smoke 5/5 PASS; AC-4 PASS (TE-2); AC-1..3/5/7 manual SPA | TE-1 PASS; TE-2 PASS; TE-3/4 manual | SKIP (V1 preview off) | Site B CRC up; replication sync; both sites in HAProxy |
 | 2026-08-14 (am) | Smoke PASS; AC-6 PASS; AC-4/5 SKIP (Site B down) | TE-1 PASS; TE-2..4 SKIP | SKIP (exit 2) | Initial run before Windows CRC started |

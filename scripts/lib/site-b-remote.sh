@@ -20,6 +20,8 @@ site_b_load_env() {
   : "${SITE_B_SSH_PASSWORD:?SITE_B_SSH_PASSWORD required}"
   SITE_B_OC_NAMESPACE="${SITE_B_OC_NAMESPACE:-rhbk-mc}"
   SITE_B_KEYCLOAK_STS="${SITE_B_KEYCLOAK_STS:-keycloak-b}"
+  SITE_B_OC_BIN="${SITE_B_OC_BIN:-C:\ProgramData\crc\bin\oc.exe}"
+  SITE_B_KUBECONFIG="${SITE_B_KUBECONFIG:-C:\ProgramData\crc\kubeconfig}"
 }
 
 site_b_ssh() {
@@ -35,10 +37,15 @@ site_b_ssh() {
     "${SITE_B_SSH_USER}@${SITE_B_SSH_HOST}" "$@"
 }
 
-# Run oc on Windows (cmd session; oc must be on PATH for the SSH user).
+# Run oc on Windows (non-interactive SSH — explicit kubeconfig; see setup-sitea-ssh-oc-path.ps1).
 site_b_oc() {
   site_b_load_env
-  site_b_ssh oc -n "${SITE_B_OC_NAMESPACE}" "$@"
+  local cmd="${SITE_B_OC_BIN} --kubeconfig ${SITE_B_KUBECONFIG} -n ${SITE_B_OC_NAMESPACE}"
+  local arg
+  for arg in "$@"; do
+    cmd+=" ${arg}"
+  done
+  site_b_ssh cmd /c "${cmd}"
 }
 
 site_b_keycloak_scale() {

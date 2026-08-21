@@ -3,7 +3,7 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "start": "node app.js",
+    "start": "NODE_TLS_REJECT_UNAUTHORIZED=0 node app.js",
     "setup-realm": "NODE_TLS_REJECT_UNAUTHORIZED=0 node scripts/setup-realm.js",
     "seed-load-users": "NODE_TLS_REJECT_UNAUTHORIZED=0 node scripts/seed-load-users.js"
   },
